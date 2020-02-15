@@ -250,12 +250,9 @@ S3method(tidy,step_unorder)
 S3method(tidy,step_upsample)
 S3method(tidy,step_window)
 S3method(tidy,step_zv)
-<<<<<<< HEAD
 S3method(tidy,step_scale_except_zero)
 S3method(tidy,step_add_element_to_zv_column)
-=======
 S3method(update,step)
->>>>>>> 40efac451d5eae48bb2015a55a97d911fb8ff647
 export("%>%")
 export(add_check)
 export(add_role)
