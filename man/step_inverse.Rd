@@ -5,8 +5,16 @@
 \alias{tidy.step_inverse}
 \title{Inverse Transformation}
 \usage{
-step_inverse(recipe, ..., role = NA, offset = 0, trained = FALSE,
-  columns = NULL, skip = FALSE, id = rand_id("inverse"))
+step_inverse(
+  recipe,
+  ...,
+  role = NA,
+  offset = 0,
+  trained = FALSE,
+  columns = NULL,
+  skip = FALSE,
+  id = rand_id("inverse")
+)
 
 \method{tidy}{step_inverse}(x, ...)
 }
@@ -75,5 +83,6 @@ tidy(inverse_obj, number = 1)
 \code{\link[=step_sqrt]{step_sqrt()}}  \code{\link[=step_hyperbolic]{step_hyperbolic()}} \code{\link[=recipe]{recipe()}}
 \code{\link[=prep.recipe]{prep.recipe()}} \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing transformation_methods}
+\concept{preprocessing}
+\concept{transformation_methods}
 \keyword{datagen}

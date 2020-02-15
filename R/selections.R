@@ -28,7 +28,7 @@
 #'   \item These arguments are not evaluated until the `prep`
 #'    function for the step is executed.
 
-#'   \item The `dplyr`-like syntax allows for negative sings to
+#'   \item The `dplyr`-like syntax allows for negative signs to
 #'    exclude variables (e.g. `-Murder`) and the set of selectors will
 #'    processed in order.
 
@@ -129,23 +129,26 @@ element_check <- function(x, allowed = selectors) {
   funs <- fun_calls(x)
   funs <- funs[!(funs %in% c("~", "+", "-"))]
   # i.e. tidyselect::matches()
-  funs <- funs[!(funs %in% c("::", "tidyselect", "dplyr"))]
+  funs <- funs[!(funs %in% c("::", "tidyselect", "dplyr", "recipes"))]
   if (!is.null(allowed)) {
     # when called from a step
     not_good <- funs[!(funs %in% allowed)]
     if (length(not_good) > 0)
-      stop(
-        "Not all functions are allowed in step function selectors (e.g. ",
-        paste0("`", not_good, "`", collapse = ", "),
-        "). See ?selections.",
-        call. = FALSE
+      rlang::abort(
+          paste0(
+          "Not all functions are allowed in step function selectors (e.g. ",
+          paste0("`", not_good, "`", collapse = ", "),
+          "). See ?selections."
+        )
       )
   } else {
     # when called from formula.recipe
     if (length(funs) > 0)
-      stop(
-        "No in-line functions should be used here; use steps to define ",
-        "baking actions", call. = FALSE
+      rlang::abort(
+        paste0(
+          "No in-line functions should be used here; use steps to define ",
+          "baking actions"
+        )
       )
   }
   invisible(NULL)
@@ -162,40 +165,59 @@ element_check <- function(x, allowed = selectors) {
 #'  from a recipe.
 #' @param terms A list of formulas whose right-hand side contains
 #'  quoted expressions. See [rlang::quos()] for examples.
+#' @param empty_fun A function to execute when no terms are selected by the
+#'  step. The default function throws an error with a message.
 #' @keywords datagen
 #' @concept preprocessing
 #' @return A character string of column names or an error of there
 #'  are no selectors or if no variables are selected.
 #' @seealso [recipe()] [summary.recipe()]
 #'   [prep.recipe()]
-#' @importFrom purrr map_lgl map_if map_chr map
-#' @importFrom rlang names2
 #' @export
 #' @examples
 #' library(rlang)
+#' library(modeldata)
 #' data(okc)
 #' rec <- recipe(~ ., data = okc)
 #' info <- summary(rec)
 #' terms_select(info = info, quos(all_predictors()))
-terms_select <- function(terms, info) {
+terms_select <- function(terms, info, empty_fun = abort_selection) {
   # unique in case a variable has multiple roles
   vars <- unique(info$variable)
 
   if (is_empty(terms)) {
-    stop("At least one selector should be used", call. = FALSE)
+    rlang::abort("At least one selector should be used")
   }
 
   ## check arguments against whitelist
   lapply(terms, element_check)
 
   # Set current_info so available to helpers
-  nested_info <- tidyr::nest(info, -variable)
+
+  # See https://tidyr.tidyverse.org/dev/articles/in-packages.html
+  if (tidyr_new_interface()) {
+    nested_info <- tidyr::nest(info, data = -variable)
+  } else {
+    nested_info <- tidyr::nest(info, -variable)
+  }
+
   old_info <- set_current_info(nested_info)
   on.exit(set_current_info(old_info), add = TRUE)
 
-  sel <- with_handlers(tidyselect::vars_select(vars, !!! terms),
-                       tidyselect_empty = abort_selection
-  )
+  # `terms` might be a single call (like in step_interact()),
+  # or it could be a list of quosures.
+  # They have to be unquoted differently
+  if (is.call(terms)) {
+    sel <- with_handlers(
+      tidyselect::vars_select(vars, !! terms),
+      tidyselect_empty = empty_fun
+    )
+  } else {
+    sel <- with_handlers(
+      tidyselect::vars_select(vars, !!! terms),
+      tidyselect_empty = empty_fun
+    )
+  }
 
   unname(sel)
 }
@@ -231,6 +253,7 @@ abort_selection <- exiting(function(cnd) {
 #'
 #' @keywords datagen
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' rec <- recipe(biomass) %>%
@@ -248,7 +271,7 @@ abort_selection <- exiting(function(cnd) {
 #' # Centering on all predictors except carbon
 #' rec %>%
 #'   step_center(all_predictors(), -carbon) %>%
-#'   prep(training = biomass, retain = TRUE) %>%
+#'   prep(training = biomass) %>%
 #'   juice()
 #'
 #' @export
@@ -260,21 +283,18 @@ has_role <- function(match = "predictor") {
 
 #' @export
 #' @rdname has_role
-#' @inheritParams has_role
 all_predictors <- function() {
   has_role("predictor")
 }
 
 #' @export
 #' @rdname has_role
-#' @inheritParams has_role
 all_outcomes <- function() {
   has_role("outcome")
 }
 
 #' @export
 #' @rdname has_role
-#' @inheritParams has_role
 has_type <- function(match = "numeric") {
   types <- peek_types()
   lgl_matches <- purrr::map_lgl(types, ~any(.x %in% match))
@@ -283,14 +303,12 @@ has_type <- function(match = "numeric") {
 
 #' @export
 #' @rdname has_role
-#' @inheritParams has_role
 all_numeric <- function() {
   has_type("numeric")
 }
 
 #' @export
 #' @rdname has_role
-#' @inheritParams has_role
 all_nominal <- function() {
   has_type("nominal")
 }
@@ -312,7 +330,7 @@ peek_info <- function(col) {
 ## dplyr versions
 
 #' @import rlang
-cur_info_env <- child_env(env_parent(env))
+cur_info_env <- child_env(empty_env())
 
 set_current_info <- function(x) {
   old <- cur_info_env
@@ -325,5 +343,5 @@ set_current_info <- function(x) {
 #' @export
 #' @rdname has_role
 current_info <- function() {
-  cur_info_env %||% stop("Variable context not set", call. = FALSE)
+  cur_info_env %||% rlang::abort("Variable context not set")
 }

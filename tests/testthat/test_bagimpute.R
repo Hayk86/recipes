@@ -5,7 +5,8 @@ library(recipes)
 
 context("bagged imputation")
 
-data("biomass")
+library(modeldata)
+data(biomass)
 
 biomass$fac <- factor(sample(letters[1:2], size = nrow(biomass), replace = TRUE))
 
@@ -14,7 +15,7 @@ rec <- recipe(HHV ~ carbon + hydrogen + oxygen + nitrogen + sulfur + fac,
 
 test_that('imputation models', {
   imputed <- rec %>%
-    step_bagimpute(carbon, fac, impute_with = imp_vars(hydrogen, oxygen), 
+    step_bagimpute(carbon, fac, impute_with = imp_vars(hydrogen, oxygen),
                    seed_val = 12, trees = 5)
 
   imputed_trained <- prep(imputed, training = biomass, verbose = FALSE)
@@ -55,7 +56,7 @@ test_that('imputation models', {
            model = imputed_trained$steps[[1]]$models,
            id = imputed_trained$steps[[1]]$id)
 
-  expect_equal(tidy(imputed, 1), imp_tibble_un)
+  expect_equivalent(as.data.frame(tidy(imputed, 1)), as.data.frame(imp_tibble_un))
   expect_equal(tidy(imputed_trained, 1)$terms, imp_tibble_tr$terms)
   expect_equal(tidy(imputed_trained, 1)$model, imp_tibble_tr$model)
 
@@ -65,14 +66,25 @@ test_that('imputation models', {
 
 test_that('printing', {
   imputed <- rec %>%
-    step_bagimpute(carbon, impute_with = imp_vars(hydrogen), seed_val = 12, 
+    step_bagimpute(carbon, impute_with = imp_vars(hydrogen), seed_val = 12,
                    trees = 7)
 
   expect_output(print(imputed))
   expect_output(prep(imputed, training = biomass, verbose = TRUE))
 })
 
-
-
-
+test_that('tunable', {
+  rec <-
+    recipe(~ ., data = iris) %>%
+    step_bagimpute(all_predictors(), impute_with = imp_vars(all_predictors()))
+  rec_param <- tunable.step_bagimpute(rec$steps[[1]])
+  expect_equal(rec_param$name, c("trees"))
+  expect_true(all(rec_param$source == "recipe"))
+  expect_true(is.list(rec_param$call_info))
+  expect_equal(nrow(rec_param), 1)
+  expect_equal(
+    names(rec_param),
+    c('name', 'call_info', 'source', 'component', 'component_id')
+  )
+})
 

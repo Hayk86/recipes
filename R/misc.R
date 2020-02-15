@@ -2,7 +2,6 @@ filter_terms <- function(x, ...)
   UseMethod("filter_terms")
 
 ## Buckets variables into discrete, mutally exclusive types
-#' @importFrom tibble tibble
 get_types <- function(x) {
   var_types <-
     c(
@@ -41,7 +40,6 @@ get_types <- function(x) {
 is_formula <- function(x)
   isTRUE(inherits(x, "formula"))
 
-#' @importFrom rlang f_lhs
 get_lhs_vars <- function(formula, data) {
   if (!is_formula(formula))
     formula <- as.formula(formula)
@@ -51,13 +49,13 @@ get_lhs_vars <- function(formula, data) {
   get_rhs_vars(new_formula, data)
 }
 
-#' @importFrom rlang f_rhs
-#' @importFrom stats model.frame
 get_rhs_vars <- function(formula, data, no_lhs = FALSE) {
-  if (!is_formula(formula))
+  if (!is_formula(formula)) {
     formula <- as.formula(formula)
-  if(no_lhs)
+  }
+  if (no_lhs) {
     formula <- as.formula(paste("~", deparse(f_rhs(formula))))
+  }
 
   ## This will need a lot of work to account for cases with `.`
   ## or embedded functions like `Sepal.Length + poly(Sepal.Width)`.
@@ -75,34 +73,7 @@ get_rhs_vars <- function(formula, data, no_lhs = FALSE) {
 get_lhs_terms <- function(x) x
 get_rhs_terms <- function(x) x
 
-## ancillary step functions
 
-## then 9 is to keep space for "[trained]"
-format_ch_vec <-
-  function(x,
-           sep = ", ",
-           width = options()$width - 9) {
-    widths <- nchar(x)
-    sep_wd <- nchar(sep)
-    adj_wd <- widths + sep_wd
-    if (sum(adj_wd) >= width) {
-      keepers <- max(which(cumsum(adj_wd) < width)) - 1
-      if (length(keepers) == 0 || keepers < 1) {
-        x <- paste(length(x), "items")
-      } else {
-        x <- c(x[1:keepers], "...")
-      }
-    }
-    paste0(x, collapse = sep)
-  }
-
-format_selectors <- function(x, wdth = options()$width - 9, ...) {
-  ## convert to character without the leading ~
-  x_items <- lapply(x, function(x)
-    as.character(x[-1]))
-  x_items <- unlist(x_items)
-  format_ch_vec(x_items, width = wdth, sep = ", ")
-}
 
 terms.recipe <- function(x, ...)
   x$term_info
@@ -155,7 +126,8 @@ mod_call_args <- function(cl, args, removals = NULL) {
 #'  `dummy_names` generates a character vector the same length as
 #'  `lvl`,
 #' @keywords datagen
-#' @concept string_functions naming_functions
+#' @concept string_functions
+#' @concept naming_functions
 #' @examples
 #' names0(9, "x")
 #' names0(10, "x")
@@ -174,7 +146,7 @@ mod_call_args <- function(cl, args, removals = NULL) {
 
 names0 <- function(num, prefix = "x") {
   if (num < 1)
-    stop("`num` should be > 0", call. = FALSE)
+    rlang::abort("`num` should be > 0")
   ind <- format(1:num)
   ind <- gsub(" ", "0", ind)
   paste0(prefix, ind)
@@ -198,6 +170,8 @@ dummy_names <- function(var, lvl, ordinal = FALSE, sep = "_") {
 fun_calls <- function(f) {
   if (is.function(f)) {
     fun_calls(body(f))
+  } else if (is_quosure(f))  {
+    fun_calls(quo_get_expr(f))
   } else if (is.call(f)) {
     fname <- as.character(f[[1]])
     # Calls inside .Internal are special and shouldn't be included
@@ -224,19 +198,24 @@ get_levels <- function(x) {
   out
 }
 
-has_lvls <- function(info)
+has_lvls <- function(info) {
   !vapply(info, function(x) all(is.na(x$values)), c(logic = TRUE))
+}
 
 strings2factors <- function(x, info) {
   check_lvls <- has_lvls(info)
-  if (!any(check_lvls))
+  if (!any(check_lvls)) {
     return(x)
+  }
   info <- info[check_lvls]
+  vars <- names(info)
+  info <- info[vars %in% names(x)]
   for (i in seq_along(info)) {
     lcol <- names(info)[i]
-    x[, lcol] <- factor(as.character(getElement(x, lcol)),
-                        levels = info[[i]]$values,
-                        ordered = info[[i]]$ordered)
+    x[, lcol] <-
+      factor(as.character(x[[lcol]]),
+             levels = info[[i]]$values,
+             ordered = info[[i]]$ordered)
   }
   x
 }
@@ -248,30 +227,23 @@ strings2factors <- function(x, info) {
 # as missing if _all_ values are missing. For if a list vector element is a
 # data frame with one missing value, that element of the list column will
 # be counted as complete.
-#' @importFrom purrr map_dfc
 n_complete_rows <- function(x) {
-  list_cols <- purrr::map_lgl(x, is.list)
-  list_cols <- names(list_cols)[list_cols]
+  is_list_col <- purrr::map_lgl(x, is.list)
+  pos_list_cols <- which(is_list_col)
 
-  if (length(list_cols) > 0) {
-    # replace with logical vector (with possible missings) for calculations
-    x[, list_cols] <- map_dfc(list_cols, convert_to_logical, x = x)
+  for (pos_list_col in pos_list_cols) {
+    x[[pos_list_col]] <- purrr::map_lgl(x[[pos_list_col]], flatten_na)
   }
+
   sum(complete.cases(x))
 }
 
-insert_na <- function(x) {
-  has_miss <- all(is.na(x))
-  if (has_miss) {
-    res <- NA
+flatten_na <- function(x) {
+  if (all(is.na(x))) {
+    NA
   } else {
-    res <- FALSE
+    FALSE
   }
-  res
-}
-
-convert_to_logical <- function(col, x) {
-  map_lgl(x[[col]], insert_na)
 }
 
 ## short summary of training set
@@ -289,7 +261,7 @@ train_info <- function(x) {
 ## and merges them. Special attention is paid to cases where the
 ## _type_ of data is changed for a common column in the data.
 
-#' @importFrom dplyr right_join mutate rename select
+
 merge_term_info <- function(.new, .old) {
   # Look for conflicts where the new variable type is different from
   # the original value
@@ -307,23 +279,20 @@ merge_term_info <- function(.new, .old) {
 #'
 #' @param ... Arguments pass in from a call to `step`
 #' @return If not empty, a list of quosures. If empty, an error is thrown.
-#' @importFrom rlang quos is_empty
 #' @export
 #' @keywords internal
 #' @rdname recipes-internal
 ellipse_check <- function(...) {
   terms <- quos(...)
   if (is_empty(terms))
-    stop("Please supply at least one variable specification.",
-         "See ?selections.",
-         call. = FALSE)
+    rlang::abort(
+      paste0(
+      "Please supply at least one variable specification.",
+      "See ?selections."
+      )
+    )
   terms
 }
-
-#' @importFrom magrittr %>%
-#' @export
-magrittr::`%>%`
-
 
 #' Printing Workhorse Function
 #'
@@ -347,7 +316,7 @@ printer <- function(tr_obj = NULL,
   if (trained) {
     txt <- format_ch_vec(tr_obj, width = width)
   } else
-    txt <- format_selectors(untr_obj, wdth = width)
+    txt <- format_selectors(untr_obj, width = width)
   if (nchar(txt) == 0)
     txt <- "<none>"
   cat(txt)
@@ -363,8 +332,8 @@ printer <- function(tr_obj = NULL,
 #' @keywords internal
 #' @rdname recipes-internal
 prepare   <- function(x, ...)
-  stop("As of version 0.0.1.9006, used `prep` ",
-       "instead of `prepare`", call. = FALSE)
+  rlang::abort(paste0("As of version 0.0.1.9006, used `prep` ",
+       "instead of `prepare`"))
 
 
 #' Check to see if a recipe is trained/prepared
@@ -404,8 +373,7 @@ fully_trained <- function(x) {
 detect_step <- function(recipe, name) {
   exports <- getNamespaceExports("recipes")
   if (!any(grepl(paste0(".*", name, ".*"), exports)))
-    stop("Please provide the name of valid step or check (ex: `center`).",
-         call. = FALSE)
+    rlang::abort("Please provide the name of valid step or check (ex: `center`).")
   name %in% tidy(recipe)$type
 }
 
@@ -447,8 +415,12 @@ check_type <- function(dat, quant = TRUE) {
     label <- "factor or character"
   }
   if (!all(all_good))
-    stop("All columns selected for the step",
-         " should be ", label, call. = FALSE)
+    rlang::abort(
+      paste0(
+        "All columns selected for the step",
+         " should be ",
+         label)
+      )
   invisible(all_good)
 }
 
@@ -474,14 +446,12 @@ is_trained <- function(x)
 #' @param x A list of selectors
 #' @return A character vector
 #' @export
-#' @importFrom purrr map_chr
 #' @keywords internal
 #' @rdname recipes-internal
 sel2char <- function(x) {
-  map_chr(x, to_character)
+  unname(map_chr(x, to_character))
 }
 
-#' @importFrom rlang is_quosure quo_text as_character
 to_character <- function(x) {
   if (rlang::is_quosure(x)) {
     res <- rlang::quo_text(x)
@@ -523,10 +493,15 @@ check_name <- function(res, new_data, object, newname = NULL, names = FALSE) {
   new_data_names <- colnames(new_data)
   intersection <- new_data_names %in% newname
   if(any(intersection)) {
-    stop("Name collision occured in `", class(object)[1],
-         "`. The following variable names already exists: ",
-         paste0(new_data_names[intersection], collapse = ", "), ".",
-         call. = FALSE)
+    rlang::abort(
+      paste0(
+        "Name collision occured in `",
+        class(object)[1],
+        "`. The following variable names already exists: ",
+        paste0(new_data_names[intersection], collapse = ", "),
+        "."
+      )
+    )
   }
   if(names) {
     names(res) <- newname
@@ -578,17 +553,18 @@ check_nominal_type <- function(x, lvl) {
     was_factor <- fac_ref_cols[!(fac_ref_cols %in% fac_act_cols)]
 
     if (length(was_factor) > 0) {
-      warning(
-        " There ",
-        ifelse(length(was_factor) > 1, "were ", "was "),
-        length(was_factor),
-        ifelse(length(was_factor) > 1, " columns ", " column "),
-        "that ",
-        ifelse(length(was_factor) > 1, "were factors ", "was a factor "),
-        "when the recipe was prepped:\n ",
-        paste0("'", was_factor, "'", collapse = ", "),
-        ".\n This may cause errors when processing new data.",
-        call. = FALSE
+      rlang::warn(
+        paste0(
+          " There ",
+          ifelse(length(was_factor) > 1, "were ", "was "),
+          length(was_factor),
+          ifelse(length(was_factor) > 1, " columns ", " column "),
+          "that ",
+          ifelse(length(was_factor) > 1, "were factors ", "was a factor "),
+          "when the recipe was prepped:\n ",
+          paste0("'", was_factor, "'", collapse = ", "),
+          ".\n This may cause errors when processing new data."
+        )
       )
     }
   }
@@ -596,7 +572,54 @@ check_nominal_type <- function(x, lvl) {
 }
 
 # ------------------------------------------------------------------------------
+# From parsnip, keep synced
 
-#' @importFrom utils globalVariables
-utils::globalVariables(c("type", "new_type"))
+is_varying <- function(x) {
+  if (is.null(x)) {
+    res <- FALSE
+  } else {
+    res <- if (is_quosure(x))
+      isTRUE(all.equal(x[[-1]], quote(varying())))
+    else
+      isTRUE(all.equal(x, quote(varying())))
+  }
+  res
+}
+
+# from tune package
+is_tune <- function(x) {
+  if (is.call(x)) {
+    if (rlang::call_name(x) == "tune") {
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  } else {
+    return(FALSE)
+  }
+  FALSE
+}
+
+# ------------------------------------------------------------------------------
+
+tidyr_new_interface <- function() {
+  utils::packageVersion("tidyr") > "0.8.99"
+}
+
+# ------------------------------------------------------------------------------
+# For all imputation functions that substitute elements into an existing vector:
+# vctrs's cast functions would be better but we'll deal with the known cases
+# to avoid a dependency.
+
+cast <- function(x, ref) {
+  if (is.factor(ref)) {
+    x <- factor(x, levels = levels(ref), ordered = is.ordered(ref))
+  } else {
+    if (is.integer(ref) & !is.factor(ref)) {
+      x <- as.integer(round(x, 0))
+    }
+  }
+  x
+}
+
 

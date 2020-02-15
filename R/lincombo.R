@@ -20,7 +20,8 @@
 #'  `tidy` method, a tibble with columns `terms` which
 #'  is the columns that will be removed.
 #' @keywords datagen
-#' @concept preprocessing variable_filters
+#' @concept preprocessing
+#' @concept variable_filters
 #' @author Max Kuhn, Kirk Mettler, and Jed Wing
 #' @export
 #'
@@ -29,6 +30,7 @@
 #'  removed to resolve the issue. This algorithm may need to be
 #'  applied multiple times (as defined by `max_steps`).
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass$new_1 <- with(biomass,
@@ -128,7 +130,7 @@ print.step_lincomb <-
         cat("Linear combination filter removed no terms")
     } else {
       cat("Linear combination filter on ", sep = "")
-      cat(format_selectors(x$terms, wdth = width))
+      cat(format_selectors(x$terms, width = width))
     }
     if (x$trained)
       cat(" [trained]\n")
@@ -142,7 +144,7 @@ recommend_rm <- function(x, eps  = 1e-6, ...) {
   if (!is.matrix(x))
     x <- as.matrix(x)
   if (is.null(colnames(x)))
-    stop("`x` should have column names", call. = FALSE)
+    rlang::abort("`x` should have column names")
 
   qr_decomp <- qr(x)
   qr_decomp_R <- qr.R(qr_decomp)           # extract R matrix
@@ -176,7 +178,7 @@ iter_lc_rm <- function(x,
                        max_steps = 10,
                        verbose = FALSE) {
   if (is.null(colnames(x)))
-    stop("`x` should have column names", call. = FALSE)
+    rlang::abort("`x` should have column names")
 
   orig_names <- colnames(x)
   if (!is.matrix(x))

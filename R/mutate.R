@@ -23,7 +23,8 @@
 #'  the value of the object in the expression (to be portable
 #'  between sessions). See the examples.
 #' @keywords datagen
-#' @concept preprocessing transformation_methods
+#' @concept preprocessing
+#' @concept transformation_methods
 #' @export
 #' @examples
 #' rec <-
@@ -33,7 +34,7 @@
 #'     half_length = Sepal.Length / 2
 #'   )
 #'
-#' prepped <- prep(rec, training = iris %>% slice(1:75), retain = TRUE)
+#' prepped <- prep(rec, training = iris %>% slice(1:75))
 #'
 #' library(dplyr)
 #'
@@ -69,7 +70,7 @@
 #'     bad_approach = Sepal.Width * const,
 #'     best_approach = Sepal.Width * !!const
 #'   ) %>%
-#'   prep(training = iris, retain = TRUE)
+#'   prep(training = iris)
 #'
 #' juice(qq_rec, contains("appro")) %>% slice(1:4)
 #'
@@ -125,7 +126,6 @@ prep.step_mutate <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom dplyr mutate
 #' @export
 bake.step_mutate <- function(object, new_data, ...) {
   dplyr::mutate(new_data, !!!object$inputs)
@@ -135,7 +135,8 @@ bake.step_mutate <- function(object, new_data, ...) {
 print.step_mutate <-
   function(x, width = max(20, options()$width - 35), ...) {
     cat("Variable mutation for ",
-        paste0(names(x$inputs), collapse = ", "))
+        paste0(names(x$inputs), collapse = ", "),
+        sep = "")
     if (x$trained) {
       cat(" [trained]\n")
     } else {
@@ -144,9 +145,6 @@ print.step_mutate <-
     invisible(x)
   }
 
-#' @importFrom rlang quo_get_expr quo_text
-#' @importFrom purrr map map_chr
-#' @importFrom dplyr tibble
 #' @rdname step_mutate
 #' @param x A `step_mutate` object
 #' @export

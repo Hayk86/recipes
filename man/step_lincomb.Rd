@@ -5,8 +5,16 @@
 \alias{tidy.step_lincomb}
 \title{Linear Combination Filter}
 \usage{
-step_lincomb(recipe, ..., role = NA, trained = FALSE, max_steps = 5,
-  removals = NULL, skip = FALSE, id = rand_id("lincomp"))
+step_lincomb(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  max_steps = 5,
+  removals = NULL,
+  skip = FALSE,
+  id = rand_id("lincomp")
+)
 
 \method{tidy}{step_lincomb}(x, ...)
 }
@@ -60,6 +68,7 @@ removed to resolve the issue. This algorithm may need to be
 applied multiple times (as defined by \code{max_steps}).
 }
 \examples{
+library(modeldata)
 data(biomass)
 
 biomass$new_1 <- with(biomass,
@@ -91,5 +100,6 @@ tidy(lincomb_filter_trained, number = 1)
 \author{
 Max Kuhn, Kirk Mettler, and Jed Wing
 }
-\concept{preprocessing variable_filters}
+\concept{preprocessing}
+\concept{variable_filters}
 \keyword{datagen}

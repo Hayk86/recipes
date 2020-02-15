@@ -23,7 +23,8 @@
 #'  selectors or variables selected) and `value` (the
 #'  lambda estimate).
 #' @keywords datagen
-#' @concept preprocessing transformation_methods
+#' @concept preprocessing
+#' @concept transformation_methods
 #' @export
 #' @details The Yeo-Johnson transformation is very similar to the
 #'  Box-Cox but does not require the input variables to be strictly
@@ -46,6 +47,7 @@
 #'   transformations to improve normality or symmetry. *Biometrika*.
 #' @examples
 #'
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -54,16 +56,16 @@
 #' rec <- recipe(HHV ~ carbon + hydrogen + oxygen + nitrogen + sulfur,
 #'               data = biomass_tr)
 #'
-#' yj_trans <- step_YeoJohnson(rec,  all_numeric())
+#' yj_transform <- step_YeoJohnson(rec,  all_numeric())
 #'
-#' yj_estimates <- prep(yj_trans, training = biomass_tr)
+#' yj_estimates <- prep(yj_transform, training = biomass_tr)
 #'
 #' yj_te <- bake(yj_estimates, biomass_te)
 #'
 #' plot(density(biomass_te$sulfur), main = "before")
 #' plot(density(yj_te$sulfur), main = "after")
 #'
-#' tidy(yj_trans, number = 1)
+#' tidy(yj_transform, number = 1)
 #' tidy(yj_estimates, number = 1)
 #' @seealso [step_BoxCox()] [recipe()]
 #'   [prep.recipe()] [bake.recipe()]
@@ -139,7 +141,7 @@ bake.step_YeoJohnson <- function(object, new_data, ...) {
   param <- names(object$lambdas)
   for (i in seq_along(object$lambdas))
     new_data[, param[i]] <-
-    yj_trans(getElement(new_data, param[i]),
+    yj_transform(getElement(new_data, param[i]),
              lambda = object$lambdas[param[i]])
   as_tibble(new_data)
 }
@@ -158,7 +160,7 @@ print.step_YeoJohnson <-
 #' @export
 #' @keywords internal
 #' @rdname recipes-internal
-yj_trans <- function(x, lambda, eps = .001) {
+yj_transform <- function(x, lambda, eps = .001) {
   if (is.na(lambda))
     return(x)
   if (!inherits(x, "tbl_df") || is.data.frame(x)) {
@@ -196,12 +198,11 @@ yj_trans <- function(x, lambda, eps = .001) {
 ## & Johnson, R. A. (2000). A new family of power transformations
 ## to improve normality or symmetry. Biometrika. page 957
 
-#' @importFrom stats var
 ll_yj <- function(lambda, y, eps = .001) {
   y <- y[!is.na(y)]
   n <- length(y)
   nonneg <- all(y > 0)
-  y_t <- yj_trans(y, lambda)
+  y_t <- yj_transform(y, lambda)
   mu_t <- mean(y_t)
   var_t <- var(y_t) * (n - 1) / n
   const <- sum(sign(y) * log(abs(y) + 1))
@@ -209,7 +210,6 @@ ll_yj <- function(lambda, y, eps = .001) {
   res
 }
 
-#' @importFrom  stats complete.cases
 ## eliminates missing data and returns -llh
 yj_obj <- function(lam, dat){
   dat <- dat[complete.cases(dat)]
@@ -217,7 +217,6 @@ yj_obj <- function(lam, dat){
 }
 
 ## estimates the values
-#' @importFrom stats optimize
 #' @export
 #' @keywords internal
 #' @rdname recipes-internal
@@ -228,7 +227,7 @@ estimate_yj <- function(dat, limits = c(-5, 5), num_unique = 5,
     if (na_rm) {
       dat <- dat[-na_rows]
     } else {
-      stop("Missing values in data. See `na_rm` option", call. = FALSE)
+      rlang::abort("Missing values in data. See `na_rm` option")
     }
   }
 

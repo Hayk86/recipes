@@ -29,9 +29,12 @@
 #'  density of numeric binary data. Note that the numeric data is
 #'  only verified to be numeric (and does not count levels).
 #' @keywords datagen
-#' @concept preprocessing dummy_variables factors
+#' @concept preprocessing
+#' @concept dummy_variables
+#' @concept factors
 #' @export
 #' @examples
+#' library(modeldata)
 #' data(covers)
 #'
 #' rec <- recipe(~ description, covers) %>%
@@ -58,7 +61,7 @@ step_bin2factor <-
            skip = FALSE,
            id = rand_id("bin2factor")) {
     if (length(levels) != 2 | !is.character(levels))
-      stop("`levels` should be a two element character string", call. = FALSE)
+      rlang::abort("`levels` should be a two element character string")
     add_step(
       recipe,
       step_bin2factor_new(
@@ -93,9 +96,9 @@ step_bin2factor_new <-
 prep.step_bin2factor <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
   if (length(col_names) < 1)
-    stop("The selector should only select at least one variable")
+    rlang::abort("The selector should only select at least one variable")
   if (any(info$type[info$variable %in% col_names] != "numeric"))
-    stop("The variables should be numeric")
+    rlang::abort("The variables should be numeric")
   step_bin2factor_new(
     terms = x$terms,
     role = x$role,

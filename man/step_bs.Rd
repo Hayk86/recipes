@@ -5,9 +5,18 @@
 \alias{tidy.step_bs}
 \title{B-Spline Basis Functions}
 \usage{
-step_bs(recipe, ..., role = "predictor", trained = FALSE,
-  deg_free = NULL, degree = 3, objects = NULL, options = list(),
-  skip = FALSE, id = rand_id("bs"))
+step_bs(
+  recipe,
+  ...,
+  role = "predictor",
+  trained = FALSE,
+  deg_free = NULL,
+  degree = 3,
+  objects = NULL,
+  options = list(),
+  skip = FALSE,
+  id = rand_id("bs")
+)
 
 \method{tidy}{step_bs}(x, ...)
 }
@@ -30,7 +39,7 @@ preprocessing have been estimated.}
 
 \item{deg_free}{The degrees of freedom.}
 
-\item{degree}{The degree of the piecewise polynomial.}
+\item{degree}{Degree of polynomial spline (integer).}
 
 \item{objects}{A list of \code{\link[splines:bs]{splines::bs()}} objects
 created once the step has been trained.}
@@ -56,7 +65,7 @@ added to the sequence of existing steps (if any). For the
 the columns that will be affected and \code{holiday}.
 }
 \description{
-\code{step_ns} creates a \emph{specification} of a recipe step
+\code{step_bs} creates a \emph{specification} of a recipe step
 that will create new columns that are basis expansions of
 variables using B-splines.
 }
@@ -70,6 +79,7 @@ from the data and new columns are added. The naming convention
 for the new variables is \code{varname_bs_1} and so on.
 }
 \examples{
+library(modeldata)
 data(biomass)
 
 biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -89,5 +99,6 @@ expanded
 \code{\link[=step_poly]{step_poly()}} \code{\link[=recipe]{recipe()}} \code{\link[=step_ns]{step_ns()}}
 \code{\link[=prep.recipe]{prep.recipe()}} \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing basis_expansion}
+\concept{basis_expansion}
+\concept{preprocessing}
 \keyword{datagen}

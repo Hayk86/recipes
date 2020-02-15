@@ -20,9 +20,6 @@
 #'  used.
 #' @param neighbors The number of neighbors.
 #' @param options A list of options to [dimRed::Isomap()].
-#' @param num The number of isomap dimensions (this will be deprecated
-#'  in factor of  `num_terms` in version 0.1.5). `num_terms` will
-#'  override this option.
 #' @param res The [dimRed::Isomap()] object is stored
 #'  here once this preprocessing step has be trained by
 #'  [prep.recipe()].
@@ -33,7 +30,9 @@
 #'  `tidy` method, a tibble with columns `terms` (the
 #'  selectors or variables selected).
 #' @keywords datagen
-#' @concept preprocessing isomap projection_methods
+#' @concept preprocessing
+#' @concept isomap
+#' @concept projection_methods
 #' @export
 #' @details Isomap is a form of multidimensional scaling (MDS).
 #'  MDS methods try to find a reduced set of dimensions such that
@@ -69,6 +68,7 @@
 #'
 #' @examples
 #' \donttest{
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -79,11 +79,8 @@
 #'
 #' im_trans <- rec %>%
 #'   step_YeoJohnson(all_predictors()) %>%
-#'   step_center(all_predictors()) %>%
-#'   step_scale(all_predictors()) %>%
-#'   step_isomap(all_predictors(),
-#'               neighbors = 100,
-#'               num_terms = 2)
+#'   step_normalize(all_predictors()) %>%
+#'   step_isomap(all_predictors(), neighbors = 100, num_terms = 2)
 #'
 #' if (require(dimRed) & require(RSpectra)) {
 #'   im_estimates <- prep(im_trans, training = biomass_tr)
@@ -94,8 +91,8 @@
 #'   plot(im_te$Isomap1, im_te$Isomap2,
 #'        xlim = rng, ylim = rng)
 #'
-#'   tidy(im_trans, number = 4)
-#'   tidy(im_estimates, number = 4)
+#'   tidy(im_trans, number = 3)
+#'   tidy(im_estimates, number = 3)
 #' }
 #' }
 #' @seealso [step_pca()] [step_kpca()]
@@ -111,15 +108,12 @@ step_isomap <-
            neighbors = 50,
            options = list(.mute = c("message", "output")),
            res = NULL,
-           num = NULL,
            prefix = "Isomap",
            skip = FALSE,
            id = rand_id("isomap")) {
 
     recipes_pkg_check(c("dimRed", "RSpectra", "igraph", "RANN"))
-    if (!is.null(num))
-      message("The argument `num` is deprecated in factor of `num_terms`. ",
-              "`num` will be removed in next version.", call. = FALSE)
+
     add_step(
       recipe,
       step_isomap_new(
@@ -130,7 +124,6 @@ step_isomap <-
         neighbors = neighbors,
         options = options,
         res = res,
-        num = num,
         prefix = prefix,
         skip = skip,
         id = id
@@ -139,7 +132,7 @@ step_isomap <-
   }
 
 step_isomap_new <-
-  function(terms, role, trained, num_terms, neighbors, options, res, num,
+  function(terms, role, trained, num_terms, neighbors, options, res,
            prefix, skip, id) {
     step(
       subclass = "isomap",
@@ -150,7 +143,6 @@ step_isomap_new <-
       neighbors = neighbors,
       options = options,
       res = res,
-      num = num,
       prefix = prefix,
       skip = skip,
       id = id
@@ -162,17 +154,27 @@ prep.step_isomap <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
   check_type(training[, col_names])
 
-  x$num_terms <- min(x$num_terms, ncol(training))
-  x$neighbors <- min(x$neighbors, nrow(training))
+  if (x$num_terms > 0) {
+    x$num_terms <- min(x$num_terms, ncol(training))
+    x$neighbors <- min(x$neighbors, nrow(training))
 
-  imap <-
-    dimRed::embed(
-      dimRed::dimRedData(as.data.frame(training[, col_names, drop = FALSE])),
-      "Isomap",
-      knn = x$neighbors,
-      ndim = x$num_terms,
-      .mute = x$options$.mute
-    )
+    iso_map <-
+      try(
+        dimRed::embed(
+          dimRed::dimRedData(as.data.frame(training[, col_names, drop = FALSE])),
+          "Isomap",
+          knn = x$neighbors,
+          ndim = x$num_terms,
+          .mute = x$options$.mute
+        ),
+        silent = TRUE)
+    if (inherits(iso_map, "try-error")) {
+      rlang::abort(paste0("`step_isomap` failed with error:\n", as.character(iso_map)))
+    }
+
+  } else {
+    iso_map <- list(x_vars = col_names)
+  }
 
   step_isomap_new(
     terms = x$terms,
@@ -181,8 +183,7 @@ prep.step_isomap <- function(x, training, info = NULL, ...) {
     num_terms = x$num_terms,
     neighbors = x$neighbors,
     options = x$options,
-    res = imap,
-    num = x$num_terms,
+    res = iso_map,
     prefix = x$prefix,
     skip = x$skip,
     id = x$id
@@ -191,26 +192,31 @@ prep.step_isomap <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_isomap <- function(object, new_data, ...) {
-  isomap_vars <- colnames(environment(object$res@apply)$indata)
-  comps <-
-    object$res@apply(
-      dimRed::dimRedData(as.data.frame(new_data[, isomap_vars, drop = FALSE]))
+  if (object$num_terms > 0) {
+    isomap_vars <- colnames(environment(object$res@apply)$indata)
+    comps <-
+      object$res@apply(
+        dimRed::dimRedData(as.data.frame(new_data[, isomap_vars, drop = FALSE]))
       )@data
-  comps <- comps[, 1:object$num_terms, drop = FALSE]
-  comps <- check_name(comps, new_data, object)
-  new_data <- bind_cols(new_data, as_tibble(comps))
-  new_data <-
-    new_data[, !(colnames(new_data) %in% isomap_vars), drop = FALSE]
-  if (!is_tibble(new_data))
-    new_data <- as_tibble(new_data)
+    comps <- comps[, 1:object$num_terms, drop = FALSE]
+    comps <- check_name(comps, new_data, object)
+    new_data <- bind_cols(new_data, as_tibble(comps))
+    new_data <-
+      new_data[, !(colnames(new_data) %in% isomap_vars), drop = FALSE]
+    if (!is_tibble(new_data))
+      new_data <- as_tibble(new_data)
+  }
   new_data
 }
 
 
-print.step_isomap <-
-  function(x, width = max(20, options()$width - 35), ...) {
+print.step_isomap <- function(x, width = max(20, options()$width - 35), ...) {
+  if (x$num_terms == 0) {
+    cat("Isomap was not conducted.\n")
+  } else {
     cat("Isomap approximation with ")
     printer(colnames(x$res@org.data), x$terms, x$trained, width = width)
+  }
     invisible(x)
   }
 
@@ -220,11 +226,32 @@ print.step_isomap <-
 #' @export
 tidy.step_isomap <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = colnames(x$res@org.data))
+    if (x$num_terms > 0) {
+      res <- tibble(terms = colnames(x$res@org.data))
+    } else {
+      res <- tibble(terms = x$res$x_vars)
+    }
   } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = term_names)
   }
   res$id <- x$id
   res
+}
+
+
+
+#' @rdname tunable.step
+#' @export
+tunable.step_isomap <- function(x, ...) {
+  tibble::tibble(
+    name = c("num_terms", "neighbors"),
+    call_info = list(
+      list(pkg = "dials", fun = "num_terms", range = c(1, 4)),
+      list(pkg = "dials", fun = "neighbors", range = c(1, 15))
+    ),
+    source = "recipe",
+    component = "step_isomap",
+    component_id = x$id
+  )
 }

@@ -5,9 +5,17 @@
 \alias{tidy.step_ns}
 \title{Nature Spline Basis Functions}
 \usage{
-step_ns(recipe, ..., role = "predictor", trained = FALSE,
-  objects = NULL, deg_free = 2, options = list(), skip = FALSE,
-  id = rand_id("ns"))
+step_ns(
+  recipe,
+  ...,
+  role = "predictor",
+  trained = FALSE,
+  objects = NULL,
+  deg_free = 2,
+  options = list(),
+  skip = FALSE,
+  id = rand_id("ns")
+)
 
 \method{tidy}{step_ns}(x, ...)
 }
@@ -68,6 +76,7 @@ from the data and new columns are added. The naming convention
 for the new variables is \code{varname_ns_1} and so on.
 }
 \examples{
+library(modeldata)
 data(biomass)
 
 biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -87,5 +96,6 @@ expanded
 \code{\link[=step_poly]{step_poly()}} \code{\link[=recipe]{recipe()}}
 \code{\link[=prep.recipe]{prep.recipe()}} \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing basis_expansion}
+\concept{basis_expansion}
+\concept{preprocessing}
 \keyword{datagen}

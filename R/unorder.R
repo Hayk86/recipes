@@ -17,7 +17,8 @@
 #'  `tidy` method, a tibble with columns `terms` (the
 #'  columns that will be affected).
 #' @keywords datagen
-#' @concept preprocessing ordinal_data
+#' @concept preprocessing
+#' @concept ordinal_data
 #' @export
 #' @details The factors level order is preserved during the transformation.
 #' @examples
@@ -81,14 +82,18 @@ prep.step_unorder <- function(x, training, info = NULL, ...) {
                         is.ordered,
                         logical(1L))
   if(all(!order_check)) {
-    stop("`step_unorder` required ordered factors.", call. = FALSE)
+    rlang::abort("`step_unorder` required ordered factors.")
   } else {
     if(any(!order_check)) {
       bad_cols <- names(order_check)[!order_check]
       bad_cols <- paste0(bad_cols, collapse = ", ")
-      warning("`step_unorder` requires ordered factors. Variables ",
-              bad_cols,
-              " will be ignored.", call. = FALSE)
+      rlang::warn(
+        paste0(
+          "`step_unorder` requires ordered factors. Variables ",
+          bad_cols,
+          " will be ignored."
+        )
+      )
       col_names <- names(order_check)[order_check]
     }
   }
@@ -103,7 +108,6 @@ prep.step_unorder <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom tibble as_tibble
 #' @export
 bake.step_unorder <- function(object, new_data, ...) {
   for (i in seq_along(object$columns))

@@ -11,7 +11,7 @@
 #'  [selections()] for more details. For the `tidy`
 #'  method, these are not currently used.
 #' @param role For model terms created by this step, what analysis
-#'  role should they be assigned?. By default, the function assumes
+#'  role should they be assigned? By default, the function assumes
 #'  that the new principal component columns created by the original
 #'  variables will be used as predictors in a model.
 #' @param num_comp The number of PCA components to retain as new
@@ -26,9 +26,6 @@
 #' @param res An S4 [kernlab::kpca()] object is stored
 #'  here once this preprocessing step has be trained by
 #'  [prep.recipe()].
-#' @param num The number of components to retain (this will be
-#'  deprecated in factor of `num_comp` in version 0.1.5). `num_comp`
-#'  will override this option.
 #' @param prefix A character string that will be the prefix to the
 #'  resulting new variables. See notes below.
 #' @return An updated version of `recipe` with the new step
@@ -36,7 +33,11 @@
 #'  `tidy` method, a tibble with columns `terms` (the
 #'  selectors or variables selected).
 #' @keywords datagen
-#' @concept preprocessing pca projection_methods kernel_methods
+#' @concept preprocessing
+#' @concept pca
+#' @concept projection_methods
+#' @concept kernel_methods
+#' @concept basis_expansion
 #' @export
 #' @details Kernel principal component analysis (kPCA) is an
 #'  extension a PCA analysis that conducts the calculations in a
@@ -80,6 +81,7 @@
 #'  of Statistical Software*, 11(1), 1-20.
 #'
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -90,8 +92,7 @@
 #'
 #' kpca_trans <- rec %>%
 #'   step_YeoJohnson(all_predictors()) %>%
-#'   step_center(all_predictors()) %>%
-#'   step_scale(all_predictors()) %>%
+#'   step_normalize(all_predictors()) %>%
 #'   step_kpca(all_predictors())
 #'
 #' if (require(dimRed) & require(kernlab)) {
@@ -103,8 +104,8 @@
 #'   plot(kpca_te$kPC1, kpca_te$kPC2,
 #'        xlim = rng, ylim = rng)
 #'
-#'   tidy(kpca_trans, number = 4)
-#'   tidy(kpca_estimates, number = 4)
+#'   tidy(kpca_trans, number = 3)
+#'   tidy(kpca_estimates, number = 3)
 #' }
 #' @seealso [step_pca()] [step_ica()]
 #'   [step_isomap()] [recipe()] [prep.recipe()]
@@ -119,15 +120,17 @@ step_kpca <-
            res = NULL,
            options = list(kernel = "rbfdot",
                           kpar = list(sigma = 0.2)),
-           num = NULL,
            prefix = "kPC",
            skip = FALSE,
            id = rand_id("kpca")) {
 
     recipes_pkg_check(c("dimRed", "kernlab"))
-    if (!is.null(num))
-      message("The argument `num` is deprecated in factor of `num_comp`. ",
-              "`num` will be removed in next version.", call. = FALSE)
+    message(
+      paste(
+        "`step_kpca()` is deprecated in favor of either `step_kpca_rbf()`",
+        "or `step_kpca_poly()`. It will be removed in future versions."
+      )
+    )
 
     add_step(
       recipe,
@@ -137,7 +140,6 @@ step_kpca <-
         trained = trained,
         num_comp = num_comp,
         res = res,
-        num = num,
         options = options,
         prefix = prefix,
         skip = skip,
@@ -147,7 +149,7 @@ step_kpca <-
 }
 
 step_kpca_new <-
-  function(terms, role, trained, num_comp, res, options, prefix, num, skip, id) {
+  function(terms, role, trained, num_comp, res, options, prefix, skip, id) {
     step(
       subclass = "kpca",
       terms = terms,
@@ -157,7 +159,6 @@ step_kpca_new <-
       res = res,
       options = options,
       prefix = prefix,
-      num = num,
       skip = skip,
       id = id
     )
@@ -168,11 +169,22 @@ prep.step_kpca <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
   check_type(training[, col_names])
 
-  kprc <- dimRed::kPCA(stdpars = c(list(ndim = x$num_comp), x$options))
-  kprc <- kprc@fun(
-    dimRed::dimRedData(as.data.frame(training[, col_names, drop = FALSE])),
-    kprc@stdpars
-  )
+  if (x$num_comp > 0) {
+    kprc <- dimRed::kPCA(stdpars = c(list(ndim = x$num_comp), x$options))
+    kprc <-
+      try(
+        kprc@fun(
+          dimRed::dimRedData(as.data.frame(training[, col_names, drop = FALSE])),
+          kprc@stdpars
+        ),
+        silent = TRUE
+      )
+    if (inherits(kprc, "try-error")) {
+      rlang::abort(paste0("`step_kpca` failed with error:\n", as.character(kprc)))
+    }
+  } else {
+    kprc <- list(x_vars = col_names)
+  }
 
   step_kpca_new(
     terms = x$terms,
@@ -182,7 +194,6 @@ prep.step_kpca <- function(x, training, info = NULL, ...) {
     options = x$options,
     res = kprc,
     prefix = x$prefix,
-    num = x$num_comp,
     skip = x$skip,
     id = x$id
   )
@@ -190,26 +201,32 @@ prep.step_kpca <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_kpca <- function(object, new_data, ...) {
-  pca_vars <- colnames(environment(object$res@apply)$indata)
-  comps <- object$res@apply(
-    dimRed::dimRedData(as.data.frame(new_data[, pca_vars, drop = FALSE]))
+  if (object$num_comp > 0) {
+    pca_vars <- colnames(environment(object$res@apply)$indata)
+    comps <- object$res@apply(
+      dimRed::dimRedData(as.data.frame(new_data[, pca_vars, drop = FALSE]))
     )@data
-  comps <- comps[, 1:object$num_comp, drop = FALSE]
-  comps <- check_name(comps, new_data, object)
-  new_data <- bind_cols(new_data, as_tibble(comps))
-  new_data <- new_data[, !(colnames(new_data) %in% pca_vars), drop = FALSE]
+    comps <- comps[, 1:object$num_comp, drop = FALSE]
+    comps <- check_name(comps, new_data, object)
+    new_data <- bind_cols(new_data, as_tibble(comps))
+    new_data <- new_data[, !(colnames(new_data) %in% pca_vars), drop = FALSE]
+  }
   as_tibble(new_data)
 }
 
 print.step_kpca <- function(x, width = max(20, options()$width - 40), ...) {
-  if(x$trained) {
-    cat("Kernel PCA (", x$res@pars$kernel, ") extraction with ", sep = "")
-    cat(format_ch_vec(colnames(x$res@org.data), width = width))
+  if (x$trained) {
+    if (x$num_comp == 0) {
+      cat("No kPCA components were extracted.\n")
+    } else {
+      cat("Kernel PCA (", x$res@pars$kernel, ") extraction with ", sep = "")
+      cat(format_ch_vec(colnames(x$res@org.data), width = width))
+    }
   } else {
     cat("Kernel PCA extraction with ", sep = "")
-    cat(format_selectors(x$terms, wdth = width))
+    cat(format_selectors(x$terms, width = width))
   }
-  if(x$trained) cat(" [trained]\n") else cat("\n")
+  if (x$trained) cat(" [trained]\n") else cat("\n")
   invisible(x)
 }
 
@@ -219,7 +236,11 @@ print.step_kpca <- function(x, width = max(20, options()$width - 40), ...) {
 #' @export
 tidy.step_kpca <- function(x, ...) {
   if (is_trained(x)) {
-    res <- tibble(terms = colnames(x$res@org.data))
+    if (x$num_comp > 0) {
+      res <- tibble(terms = colnames(x$res@org.data))
+    } else {
+      res <- tibble(terms = x$res$x_vars)
+    }
   } else {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = term_names)

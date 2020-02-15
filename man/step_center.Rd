@@ -3,10 +3,18 @@
 \name{step_center}
 \alias{step_center}
 \alias{tidy.step_center}
-\title{Centering Numeric Data}
+\title{Centering numeric data}
 \usage{
-step_center(recipe, ..., role = NA, trained = FALSE, means = NULL,
-  na_rm = TRUE, skip = FALSE, id = rand_id("center"))
+step_center(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  means = NULL,
+  na_rm = TRUE,
+  skip = FALSE,
+  id = rand_id("center")
+)
 
 \method{tidy}{step_center}(x, ...)
 }
@@ -60,6 +68,7 @@ argument of \code{prep.recipe}. \code{bake.recipe} then applies
 the centering to new data sets using these means.
 }
 \examples{
+library(modeldata)
 data(biomass)
 
 biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -85,5 +94,6 @@ tidy(center_obj, number = 1)
 \code{\link[=recipe]{recipe()}} \code{\link[=prep.recipe]{prep.recipe()}}
 \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing normalization_methods}
+\concept{normalization_methods}
+\concept{preprocessing}
 \keyword{datagen}

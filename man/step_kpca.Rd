@@ -5,10 +5,18 @@
 \alias{tidy.step_kpca}
 \title{Kernel PCA Signal Extraction}
 \usage{
-step_kpca(recipe, ..., role = "predictor", trained = FALSE,
-  num_comp = 5, res = NULL, options = list(kernel = "rbfdot", kpar =
-  list(sigma = 0.2)), num = NULL, prefix = "kPC", skip = FALSE,
-  id = rand_id("kpca"))
+step_kpca(
+  recipe,
+  ...,
+  role = "predictor",
+  trained = FALSE,
+  num_comp = 5,
+  res = NULL,
+  options = list(kernel = "rbfdot", kpar = list(sigma = 0.2)),
+  prefix = "kPC",
+  skip = FALSE,
+  id = rand_id("kpca")
+)
 
 \method{tidy}{step_kpca}(x, ...)
 }
@@ -22,7 +30,7 @@ variables will be used to compute the components. See
 method, these are not currently used.}
 
 \item{role}{For model terms created by this step, what analysis
-role should they be assigned?. By default, the function assumes
+role should they be assigned? By default, the function assumes
 that the new principal component columns created by the original
 variables will be used as predictors in a model.}
 
@@ -43,10 +51,6 @@ here once this preprocessing step has be trained by
 \code{kernel} and \code{kpar} but others can be passed in.
 \strong{Note} that the arguments \code{x} and \code{features}
 should not be passed here (or at all).}
-
-\item{num}{The number of components to retain (this will be
-deprecated in factor of \code{num_comp} in version 0.1.5). \code{num_comp}
-will override this option.}
 
 \item{prefix}{A character string that will be the prefix to the
 resulting new variables. See notes below.}
@@ -108,6 +112,7 @@ if \code{num_comp < 10}, their names will be \code{kPC1} -
 \code{kPC001} - \code{kPC101}.
 }
 \examples{
+library(modeldata)
 data(biomass)
 
 biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -118,8 +123,7 @@ rec <- recipe(HHV ~ carbon + hydrogen + oxygen + nitrogen + sulfur,
 
 kpca_trans <- rec \%>\%
   step_YeoJohnson(all_predictors()) \%>\%
-  step_center(all_predictors()) \%>\%
-  step_scale(all_predictors()) \%>\%
+  step_normalize(all_predictors()) \%>\%
   step_kpca(all_predictors())
 
 if (require(dimRed) & require(kernlab)) {
@@ -131,8 +135,8 @@ if (require(dimRed) & require(kernlab)) {
   plot(kpca_te$kPC1, kpca_te$kPC2,
        xlim = rng, ylim = rng)
 
-  tidy(kpca_trans, number = 4)
-  tidy(kpca_estimates, number = 4)
+  tidy(kpca_trans, number = 3)
+  tidy(kpca_estimates, number = 3)
 }
 }
 \references{
@@ -149,5 +153,9 @@ of Statistical Software}, 11(1), 1-20.
 \code{\link[=step_isomap]{step_isomap()}} \code{\link[=recipe]{recipe()}} \code{\link[=prep.recipe]{prep.recipe()}}
 \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing pca projection_methods kernel_methods}
+\concept{basis_expansion}
+\concept{kernel_methods}
+\concept{pca}
+\concept{preprocessing}
+\concept{projection_methods}
 \keyword{datagen}

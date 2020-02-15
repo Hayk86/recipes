@@ -26,8 +26,10 @@
 #'  `tidy` method, a tibble with columns `terms` which is
 #'  the columns that will be affected and `holiday`.
 #' @keywords datagen
-#' @concept preprocessing model_specification variable_encodings
-#'  dates
+#' @concept preprocessing
+#' @concept model_specification
+#' @concept variable_encodings
+#' @concept dates
 #' @export
 #' @details Unlike other steps, `step_holiday` does
 #'  *not* remove the original date variables.
@@ -57,10 +59,12 @@ step_holiday <-
     skip = FALSE,
     id = rand_id("holiday")
   ) {
-  all_days <- listHolidays()
-  if (!all(holidays %in% all_days))
-    stop("Invalid `holidays` value. See timeDate::listHolidays",
-         call. = FALSE)
+
+    if (!is_tune(holidays) & !is_varying(holidays)) {
+      all_days <- listHolidays()
+      if (!all(holidays %in% all_days))
+        rlang::abort("Invalid `holidays` value. See timeDate::listHolidays")
+    }
 
   add_step(
     recipe,
@@ -90,15 +94,18 @@ step_holiday_new <-
     )
   }
 
-#' @importFrom stats as.formula model.frame
 #' @export
 prep.step_holiday <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
 
   holiday_data <- info[info$variable %in% col_names, ]
   if (any(holiday_data$type != "date"))
-    stop("All variables for `step_holiday` should be either `Date` ",
-         "or `POSIXct` classes.", call. = FALSE)
+    rlang::abort(
+      paste0(
+        "All variables for `step_holiday` should be either `Date` ",
+        "or `POSIXct` classes."
+         )
+    )
 
   step_holiday_new(
     terms = x$terms,
@@ -120,7 +127,6 @@ is_holiday <- function(hol, dt) {
   out
 }
 
-#' @importFrom lubridate year is.Date
 get_holiday_features <- function(dt, hdays) {
   if (!is.Date(dt))
     dt <- as.Date(dt)
@@ -131,7 +137,6 @@ get_holiday_features <- function(dt, hdays) {
   as_tibble(hfeat)
 }
 
-#' @importFrom tibble as_tibble is_tibble
 #' @export
 bake.step_holiday <- function(object, new_data, ...) {
   new_cols <-

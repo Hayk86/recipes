@@ -21,7 +21,8 @@
 #'  `tidy` method, a tibble with columns `terms` (the
 #'  columns that will be affected), `inverse`, and `func`.
 #' @keywords datagen
-#' @concept preprocessing transformation_methods
+#' @concept preprocessing
+#' @concept transformation_methods
 #' @export
 #' @examples
 #' set.seed(313)
@@ -57,8 +58,7 @@ step_hyperbolic <-
            id = rand_id("hyperbolic")) {
     funcs <- c("sin", "cos", "tan")
     if (!(func %in% funcs))
-      stop("`func` should be either `sin``, `cos`, or `tan`",
-           call. = FALSE)
+      rlang::abort("`func` should be either `sin``, `cos`, or `tan`")
     add_step(
       recipe,
       step_hyperbolic_new(

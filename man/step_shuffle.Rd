@@ -5,8 +5,15 @@
 \alias{tidy.step_shuffle}
 \title{Shuffle Variables}
 \usage{
-step_shuffle(recipe, ..., role = NA, trained = FALSE, columns = NULL,
-  skip = FALSE, id = rand_id("shuffle"))
+step_shuffle(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  columns = NULL,
+  skip = FALSE,
+  id = rand_id("shuffle")
+)
 
 \method{tidy}{step_shuffle}(x, ...)
 }
@@ -66,5 +73,7 @@ bake(rand_set, integers)
 tidy(rec, number = 1)
 tidy(rand_set, number = 1)
 }
-\concept{preprocessing randomization permutation}
+\concept{permutation}
+\concept{preprocessing}
+\concept{randomization}
 \keyword{datagen}

@@ -5,9 +5,18 @@
 \alias{tidy.step_dummy}
 \title{Dummy Variables Creation}
 \usage{
-step_dummy(recipe, ..., role = "predictor", trained = FALSE,
-  one_hot = FALSE, naming = dummy_names, levels = NULL,
-  skip = FALSE, id = rand_id("dummy"))
+step_dummy(
+  recipe,
+  ...,
+  role = "predictor",
+  trained = FALSE,
+  one_hot = FALSE,
+  preserve = FALSE,
+  naming = dummy_names,
+  levels = NULL,
+  skip = FALSE,
+  id = rand_id("dummy")
+)
 
 \method{tidy}{step_dummy}(x, ...)
 }
@@ -32,6 +41,9 @@ preprocessing have been estimated.}
 \item{one_hot}{A logical. For C levels, should C dummy variables be created
 rather than C-1?}
 
+\item{preserve}{A single logical; should the selected column(s) be retained
+(in addition to the new dummy variables).}
+
 \item{naming}{A function that defines the naming convention for
 new dummy columns. See Details below.}
 
@@ -55,7 +67,8 @@ the computations for subsequent operations}
 An updated version of \code{recipe} with the new step
 added to the sequence of existing steps (if any). For the
 \code{tidy} method, a tibble with columns \code{terms} (the
-selectors or variables selected).
+selectors or original variables selected) and \code{columns} (the
+list of corresponding binary columns).
 }
 \description{
 \code{step_dummy} creates a a \emph{specification} of a recipe
@@ -85,9 +98,9 @@ be changed by \code{\link[base:make.names]{base::make.names()}} to be valid (see
 below). The naming format can be changed using the \code{naming}
 argument and the function \code{\link[=dummy_names]{dummy_names()}} is the default. This
 function will also change the names of ordinal dummy variables.
-Instead of values such as "\code{.L}", "\code{.Q}", or "\code{^4}", ordinal
+Instead of values such as "\code{.L}", "\code{.Q}", or "\verb{^4}", ordinal
 dummy variables are given simple integer suffixes such as
-"\code{_1}", "\code{_2}", etc.
+"\verb{_1}", "\verb{_2}", etc.
 
 To change the type of contrast being used, change the global
 contrast option via \code{options}.
@@ -99,10 +112,15 @@ When data to be processed contains novel levels (i.e., not
 contained in the training set), a missing value is assigned to
 the results. See \code{\link[=step_other]{step_other()}} for an alternative.
 
+If no columns are selected (perhaps due to an earlier \code{step_zv()}), the
+\code{bake()} and \code{juice()} functions will return the data as-is (e.g. with no
+dummy variables).
+
 The \href{https://tidymodels.github.io/recipes/articles/Dummies.html}{package vignette for dummy variables}
 and interactions has more information.
 }
 \examples{
+library(modeldata)
 data(okc)
 okc <- okc[complete.cases(okc),]
 
@@ -119,7 +137,7 @@ grep("^diet", names(dummy_data), value = TRUE)
 # Obtain the full set of dummy variables using `one_hot` option
 rec \%>\%
   step_dummy(diet, one_hot = TRUE) \%>\%
-  prep(training = okc, retain = TRUE) \%>\%
+  prep(training = okc) \%>\%
   juice(starts_with("diet")) \%>\%
   names() \%>\%
   length()
@@ -138,6 +156,8 @@ tidy(dummies, number = 1)
 \code{\link[=step_ordinalscore]{step_ordinalscore()}}, \code{\link[=step_unorder]{step_unorder()}}, \code{\link[=step_other]{step_other()}}
 \code{\link[=step_novel]{step_novel()}}
 }
-\concept{preprocessing dummy_variables model_specification
-dummy_variables variable_encodings}
+\concept{dummy_variables}
+\concept{model_specification}
+\concept{preprocessing}
+\concept{variable_encodings}
 \keyword{datagen}

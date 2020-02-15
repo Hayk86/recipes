@@ -19,7 +19,8 @@
 #'  `tidy` method, a tibble with columns `terms` which
 #'  is the columns that will be affected.
 #' @keywords datagen
-#' @concept preprocessing transformation_methods
+#' @concept preprocessing
+#' @concept transformation_methods
 #' @export
 #' @examples
 #' set.seed(313)
@@ -93,8 +94,6 @@ prep.step_inverse <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom tibble as_tibble
-#' @importFrom stats binomial
 #' @export
 bake.step_inverse <- function(object, new_data, ...) {
   for (i in seq_along(object$columns))

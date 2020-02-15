@@ -5,9 +5,17 @@
 \alias{tidy.step_BoxCox}
 \title{Box-Cox Transformation for Non-Negative Data}
 \usage{
-step_BoxCox(recipe, ..., role = NA, trained = FALSE, lambdas = NULL,
-  limits = c(-5, 5), num_unique = 5, skip = FALSE,
-  id = rand_id("BoxCox"))
+step_BoxCox(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  lambdas = NULL,
+  limits = c(-5, 5),
+  num_unique = 5,
+  skip = FALSE,
+  id = rand_id("BoxCox")
+)
 
 \method{tidy}{step_BoxCox}(x, ...)
 }
@@ -102,5 +110,6 @@ A review. \emph{The Statistician}, 169-178..
 \code{\link[=step_YeoJohnson]{step_YeoJohnson()}} \code{\link[=recipe]{recipe()}}
 \code{\link[=prep.recipe]{prep.recipe()}} \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing transformation_methods}
+\concept{preprocessing}
+\concept{transformation_methods}
 \keyword{datagen}

@@ -6,7 +6,8 @@
 #' @aliases recipe recipe.default recipe.formula
 #' @author Max Kuhn
 #' @keywords datagen
-#' @concept preprocessing model_specification
+#' @concept preprocessing
+#' @concept model_specification
 #' @export
 recipe <- function(x, ...)
   UseMethod("recipe")
@@ -14,7 +15,7 @@ recipe <- function(x, ...)
 #' @rdname recipe
 #' @export
 recipe.default <- function(x, ...)
-  stop("`x` should be a data frame, matrix, or tibble", call. = FALSE)
+  rlang::abort("`x` should be a data frame, matrix, or tibble")
 
 #' @rdname recipe
 #' @param vars A character string of column names corresponding to variables
@@ -26,10 +27,10 @@ recipe.default <- function(x, ...)
 #' @param ... Further arguments passed to or from other methods (not currently
 #'   used).
 #' @param formula A model formula. No in-line functions should be used here
-#'   (e.g. `log(x)`, `x:y`, etc.). These types of transformations
-#'   should be enacted using `step` functions in this package. Dots are
-#'   allowed as are simple multivariate outcome terms (i.e. no need for
-#'   `cbind`; see Examples).
+#'  (e.g. `log(x)`, `x:y`, etc.) and minus signs are not allowed. These types of
+#'  transformations should be enacted using `step` functions in this package.
+#'  Dots are allowed as are simple multivariate outcome terms (i.e. no need for
+#'  `cbind`; see Examples).
 #' @param x,data A data frame or tibble of the *template* data set
 #'   (see below).
 #' @return An object of class `recipe` with sub-objects:
@@ -85,13 +86,11 @@ recipe.default <- function(x, ...)
 #'   data set to save time and memory.
 #'
 #' @export
-#' @importFrom tibble as_tibble is_tibble tibble
-#' @importFrom dplyr full_join
-#' @importFrom stats predict
 #' @examples
 #'
 #' ###############################################
 #' # simple example:
+#' library(modeldata)
 #' data(biomass)
 #'
 #' # split data
@@ -105,8 +104,7 @@ recipe.default <- function(x, ...)
 #' # Now add preprocessing steps to the recipe.
 #'
 #' sp_signed <- rec %>%
-#'   step_center(all_predictors()) %>%
-#'   step_scale(all_predictors()) %>%
+#'   step_normalize(all_predictors()) %>%
 #'   step_spatialsign(all_predictors())
 #' sp_signed
 #'
@@ -120,8 +118,7 @@ recipe.default <- function(x, ...)
 #' # or use pipes for the entire workflow:
 #' rec <- biomass_tr %>%
 #'   recipe(HHV ~ carbon + hydrogen + oxygen + nitrogen + sulfur) %>%
-#'   step_center(all_predictors()) %>%
-#'   step_scale(all_predictors()) %>%
+#'   step_normalize(all_predictors()) %>%
 #'   step_spatialsign(all_predictors())
 #'
 #' ###############################################
@@ -157,11 +154,17 @@ recipe.data.frame <-
 
     if (!is.null(formula)) {
       if (!is.null(vars))
-        stop("This `vars` specification will be ignored when a formula is ",
-             "used", call. = FALSE)
+        rlang::abort(
+          paste0("This `vars` specification will be ignored ",
+             "when a formula is used"
+             )
+          )
       if (!is.null(roles))
-        stop("This `roles` specification will be ignored when a formula is ",
-             "used", call. = FALSE)
+        rlang::abort(
+          paste0("This `roles` specification will be ignored ",
+             "when a formula is used"
+             )
+          )
 
       obj <- recipe.formula(formula, x, ...)
       return(obj)
@@ -174,9 +177,9 @@ recipe.data.frame <-
       x <- as_tibble(x)
 
     if (any(table(vars) > 1))
-      stop("`vars` should have unique members", call. = FALSE)
+      rlang::abort("`vars` should have unique members")
     if (any(!(vars %in% colnames(x))))
-      stop("1+ elements of `vars` are not in `x`", call. = FALSE)
+      rlang::abort("1+ elements of `vars` are not in `x`")
 
     x <- x[, vars]
 
@@ -185,8 +188,10 @@ recipe.data.frame <-
     ## Check and add roles when available
     if (!is.null(roles)) {
       if (length(roles) != length(vars))
-        stop("The number of roles should be the same as the number of ",
-             "variables", call. = FALSE)
+        rlang::abort(
+          paste0("The number of roles should be the same as the number of ",
+             "variables")
+        )
       var_info$role <- roles
     } else
       var_info$role <- NA
@@ -211,6 +216,13 @@ recipe.data.frame <-
 #' @rdname recipe
 #' @export
 recipe.formula <- function(formula, data, ...) {
+  # check for minus:
+  f_funcs <- fun_calls(formula)
+  if (any(f_funcs == "-")) {
+    rlang::abort("`-` is not allowed in a recipe formula. Use `step_rm()` instead.")
+  }
+
+  # Check for other in-line functions
   args <- form2args(formula, data, ...)
   obj <- recipe.data.frame(
     x = args$x,
@@ -228,10 +240,6 @@ recipe.matrix <- function(x, ...) {
   x <- as.data.frame(x)
   recipe.data.frame(x, ...)
 }
-
-
-#' @importFrom stats as.formula
-#' @importFrom tibble as_tibble is_tibble
 
 form2args <- function(formula, data, ...) {
   if (!is_formula(formula))
@@ -272,7 +280,8 @@ form2args <- function(formula, data, ...) {
 #'   used).
 #' @author Max Kuhn
 #' @keywords datagen
-#' @concept preprocessing model_specification
+#' @concept preprocessing
+#' @concept model_specification
 #' @export
 prep   <- function(x, ...)
   UseMethod("prep")
@@ -321,8 +330,6 @@ prep   <- function(x, ...)
 #'   data, the step for scaling is given the centered data.
 #'
 #' @rdname prep
-#' @importFrom tibble as_tibble is_tibble tibble
-#' @importFrom purrr map_lgl
 #' @export
 prep.recipe <-
   function(x,
@@ -338,13 +345,19 @@ prep.recipe <-
 
     if (is.null(training)) {
       if (fresh)
-        stop("A training set must be supplied to the `training` argument ",
-             "when `fresh = TRUE`", call. = FALSE)
+        rlang::abort(
+          paste0("A training set must be supplied to the `training` argument ",
+             "when `fresh = TRUE`"
+             )
+          )
       training <- x$template
     } else {
       if (!all(vars %in% colnames(training))) {
-        stop("Not all variables in the recipe are present in the supplied ",
-             "training set", call. = FALSE)
+        rlang::abort(
+          paste0("Not all variables in the recipe are present in the supplied ",
+             "training set"
+          )
+        )
       }
       training <- if (!is_tibble(training))
         as_tibble(training[, vars, drop = FALSE])
@@ -355,18 +368,20 @@ prep.recipe <-
     steps_trained <- vapply(x$steps, is_trained, logical(1))
     if (any(steps_trained) & !fresh) {
       if(!x$retained)
-        stop(
+        rlang::abort(
+          paste0(
           "To prep new steps after prepping the original ",
           "recipe, `retain = TRUE` must be set each time that ",
-          "the recipe is trained.",
-          call. = FALSE
+          "the recipe is trained."
+          )
         )
       if (!is.null(x$training))
-        warning(
-          "The previous data will be used by `prep`; ",
-          "the data passed using `training` will be ",
-          "ignored.",
-          call. = FALSE
+        rlang::warn(
+          paste0(
+            "The previous data will be used by `prep`; ",
+            "the data passed using `training` will be ",
+            "ignored."
+          )
         )
       training <- x$template
     }
@@ -387,9 +402,13 @@ prep.recipe <-
     # use `retain = TRUE` so issue a warning if this is not the case
     skippers <- map_lgl(x$steps, is_skipable)
     if (any(skippers) & !retain)
-      warning("Since some operations have `skip = FALSE`, using ",
-              "`retain = TRUE` will allow those steps results to ",
-              "be accessible.")
+      rlang::warn(
+        paste0(
+          "Since some operations have `skip = FALSE`, using ",
+          "`retain = TRUE` will allow those steps results to ",
+          "be accessible."
+        )
+      )
 
 
     running_info <- x$term_info %>% mutate(number = 0, skip = FALSE)
@@ -410,20 +429,27 @@ prep.recipe <-
         x$term_info <-
           merge_term_info(get_types(training), x$term_info)
 
-        ## Update the roles and the term source
-        ## These next two steps needs to be smarter to find diffs
-        if (!is.na(x$steps[[i]]$role))
-          x$term_info$role[is.na(x$term_info$role)] <-
-          x$steps[[i]]$role
+        # Update the roles and the term source
+        if (!is.na(x$steps[[i]]$role)) {
 
-        x$term_info$source[is.na(x$term_info$source)] <- "derived"
+          new_vars <- setdiff(x$term_info$variable, running_info$variable)
+          pos_new_var <- x$term_info$variable %in% new_vars
+          pos_new_and_na_role <- pos_new_var & is.na(x$term_info$role)
+          pos_new_and_na_source <- pos_new_var  & is.na(x$term_info$source)
 
-        running_info <-
-          rbind(running_info,
-                x$term_info %>% mutate(number = i, skip = x$steps[[i]]$skip))
-      } else {
-        if (verbose)
-          cat(note, "[pre-trained]\n")
+          x$term_info$role[pos_new_and_na_role] <- x$steps[[i]]$role
+          x$term_info$source[pos_new_and_na_source] <- "derived"
+
+        }
+
+        running_info <- rbind(
+          running_info,
+          mutate(x$term_info, number = i, skip = x$steps[[i]]$skip)
+        )
+
+      }
+      else {
+        if (verbose) cat(note, "[pre-trained]\n")
       }
     }
 
@@ -465,7 +491,8 @@ prep.recipe <-
 #' @aliases bake bake.recipe
 #' @author Max Kuhn
 #' @keywords datagen
-#' @concept preprocessing model_specification
+#' @concept preprocessing
+#' @concept model_specification
 #' @export
 bake <- function(object, ...)
   UseMethod("bake")
@@ -504,89 +531,86 @@ bake <- function(object, ...)
 #'   of the steps applied.
 #' @seealso [recipe()], [juice()], [prep()]
 #' @rdname bake
-#' @importFrom tibble as_tibble
-#' @importFrom dplyr filter group_by arrange desc
-#' @importFrom tidyselect everything
-#' @importFrom utils object.size
 #' @export
 bake.recipe <- function(object, new_data = NULL, ..., composition = "tibble") {
-  if (!fully_trained(object))
-    stop("At least one step has not been trained. Please ",
-         "run `prep`.",
-         call. = FALSE)
+  if (!fully_trained(object)) {
+    rlang::abort("At least one step has not been trained. Please run `prep`.")
+  }
 
-  if (!any(composition == formats))
-    stop("`composition` should be one of: ",
-         paste0("'", formats, "'", collapse = ","),
-         call. = FALSE)
+  if (!any(composition == formats)) {
+    rlang::abort(
+      paste0(
+      "`composition` should be one of: ",
+      paste0("'", formats, "'", collapse = ",")
+      )
+    )
+  }
 
   terms <- quos(...)
+  if (is_empty(terms)) {
+    terms <- quos(everything())
+  }
 
   # In case someone used the deprecated `newdata`:
   if (is.null(new_data) || is.null(ncol(new_data))) {
     if (any(names(terms) == "newdata")) {
-      warning("Please use `new_data` instead of `newdata` with `bake`. \nIn ",
-              "recipes versions >= 0.1.4, this will cause an error.",
-              call. = FALSE)
-      # If a single selector is passed in, it is now in `new_data`.
-      if (!is.null(match.call()$new_data)) {
-        slctr <- as_quosure(match.call()$new_data)
-      } else slctr <- NULL
-      new_data <- eval_tidy(terms$newdata)
-      if (length(terms) > 1) {
-        terms$newdata <- NULL
-        if (!is.null(slctr)) {
-          terms <- c(slctr, terms)
-        }
-      } else {
-        if (!is.null(slctr)) {
-          terms <- list(slctr)
-        } else terms <- quos()
-      }
+      rlang::abort("Please use `new_data` instead of `newdata` with `bake`.")
     } else {
-      stop("Please pass a data set to `new_data`.", call. = FALSE)
+      rlang::abort("Please pass a data set to `new_data`.")
     }
   }
 
-  if (!is_tibble(new_data)) new_data <- as_tibble(new_data)
+  if (!is_tibble(new_data)) {
+    new_data <- as_tibble(new_data)
+  }
 
   check_nominal_type(new_data, object$orig_lvls)
-
-
-  if (is_empty(terms))
-    terms <- quos(everything())
 
   # Determine return variables. The context (ie. `info`) can
   # change depending on whether a skip step was used. If so, we
   # use an alternate info tibble that has all possible terms
   # in it.
   has_skip <- vapply(object$steps, function(x) x$skip, logical(1))
+
   if (any(has_skip)) {
-    keepers <- terms_select(terms = terms, info = object$last_term_info)
+    keepers <-
+      terms_select(terms = terms,
+                   info = object$last_term_info,
+                   empty_fun = passover)
   } else {
-    keepers <- terms_select(terms = terms, info = object$term_info)
+    keepers <-
+      terms_select(terms = terms,
+                   info = object$term_info,
+                   empty_fun = passover)
   }
 
-  for (i in seq(along = object$steps)) {
-    if (!is_skipable(object$steps[[i]])) {
-      new_data <- bake(object$steps[[i]], new_data = new_data)
-      if (!is_tibble(new_data))
-        new_data <- as_tibble(new_data)
+  if (length(keepers) > 0) {
+    for (i in seq(along = object$steps)) {
+      if (!is_skipable(object$steps[[i]])) {
+        new_data <- bake(object$steps[[i]], new_data = new_data)
+        if (!is_tibble(new_data))
+          new_data <- as_tibble(new_data)
+      }
     }
-  }
 
-  new_data <- new_data[, names(new_data) %in% keepers]
-  ## The levels are not null when no nominal data are present or
-  ## if strings_as_factors = FALSE in `prep`
-  if (!is.null(object$levels)) {
-    var_levels <- object$levels
-    var_levels <- var_levels[keepers]
-    check_values <-
-      vapply(var_levels, function(x)
-        (!all(is.na(x))), c(all = TRUE))
-    var_levels <- var_levels[check_values]
-    if (length(var_levels) > 0)
-      new_data <- strings2factors(new_data, var_levels)
+    new_data <- new_data[, names(new_data) %in% keepers]
+    columns_sorted <- match(keepers, names(new_data))
+    columns_sorted <- columns_sorted[!is.na(columns_sorted)]
+    new_data <- new_data[, columns_sorted]
+    ## The levels are not null when no nominal data are present or
+    ## if strings_as_factors = FALSE in `prep`
+    if (!is.null(object$levels)) {
+      var_levels <- object$levels
+      var_levels <- var_levels[keepers]
+      check_values <-
+        vapply(var_levels, function(x)
+          (!all(is.na(x))), c(all = TRUE))
+      var_levels <- var_levels[check_values]
+      if (length(var_levels) > 0)
+        new_data <- strings2factors(new_data, var_levels)
+    }
+  } else {
+    new_data <- tibble(.rows = nrow(new_data))
   }
 
   if (composition == "dgCMatrix") {
@@ -703,6 +727,7 @@ summary.recipe <- function(object, original = FALSE, ...) {
 #'  the step's `skip` argument.
 #'
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -712,11 +737,10 @@ summary.recipe <- function(object, original = FALSE, ...) {
 #'               data = biomass_tr)
 #'
 #' sp_signed <- rec %>%
-#'   step_center(all_predictors()) %>%
-#'   step_scale(all_predictors()) %>%
+#'   step_normalize(all_predictors()) %>%
 #'   step_spatialsign(all_predictors())
 #'
-#' sp_signed_trained <- prep(sp_signed, training = biomass_tr, retain = TRUE)
+#' sp_signed_trained <- prep(sp_signed, training = biomass_tr)
 #'
 #' tr_values <- bake(sp_signed_trained, new_data = biomass_tr, all_predictors())
 #' og_values <- juice(sp_signed_trained, all_predictors())
@@ -725,37 +749,51 @@ summary.recipe <- function(object, original = FALSE, ...) {
 #' @export
 #' @seealso [recipe()] [prep.recipe()] [bake.recipe()]
 juice <- function(object, ..., composition = "tibble") {
-  if (!fully_trained(object))
-    stop("At least one step has not been trained. Please ",
-         "run `prep`.",
-         call. = FALSE)
+  if (!fully_trained(object)) {
+    rlang::abort("At least one step has not been trained. Please run `prep`.")
+  }
 
-  if(!isTRUE(object$retained))
-    stop("Use `retain = TRUE` in `prep` to be able to extract the training set",
-         call. = FALSE)
+  if (!isTRUE(object$retained)) {
+    rlang::abort(
+      paste0("Use `retain = TRUE` in `prep` to be able",
+             "to extract the training set"
+             )
+    )
+  }
 
-  if (!any(composition == formats))
-    stop("`composition` should be one of: ",
-         paste0("'", formats, "'", collapse = ","),
-         call. = FALSE)
+  if (!any(composition == formats)) {
+    rlang::abort(
+      paste0("`composition` should be one of: ",
+         paste0("'", formats, "'", collapse = ",")
+         )
+      )
+  }
 
   terms <- quos(...)
-  if (is_empty(terms))
+  if (is_empty(terms)) {
     terms <- quos(everything())
-  keepers <- terms_select(terms = terms, info = object$term_info)
+  }
+  keepers <-
+    terms_select(terms = terms,
+                 info = object$term_info,
+                 empty_fun = passover)
 
-  new_data <- object$template[, names(object$template) %in% keepers]
+  if (length(keepers) > 0) {
+    new_data <- object$template[, names(object$template) %in% keepers]
 
-  ## Since most models require factors, do the conversion from character
-  if (!is.null(object$levels)) {
-    var_levels <- object$levels
-    var_levels <- var_levels[keepers]
-    check_values <-
-      vapply(var_levels, function(x)
-        (!all(is.na(x))), c(all = TRUE))
-    var_levels <- var_levels[check_values]
-    if (length(var_levels) > 0)
-      new_data <- strings2factors(new_data, var_levels)
+    ## Since most models require factors, do the conversion from character
+    if (!is.null(object$levels)) {
+      var_levels <- object$levels
+      var_levels <- var_levels[keepers]
+      check_values <-
+        vapply(var_levels, function(x)
+          (!all(is.na(x))), c(all = TRUE))
+      var_levels <- var_levels[check_values]
+      if (length(var_levels) > 0)
+        new_data <- strings2factors(new_data, var_levels)
+    }
+  } else {
+    new_data <- tibble(.rows = nrow(object$template))
   }
 
   if (composition == "dgCMatrix") {

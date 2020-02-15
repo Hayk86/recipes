@@ -1,6 +1,6 @@
 #' Distances to Class Centroids
 #'
-#' `step_classdist` creates a a *specification* of a
+#' `step_classdist` creates a *specification* of a
 #'  recipe step that will convert numeric data into Mahalanobis
 #'  distance measurements to the data centroid. This is done for
 #'  each value of a categorical class variable.
@@ -30,14 +30,13 @@
 #'  selectors or variables selected), `value` (the centroid of
 #'  the class), and `class`.
 #' @keywords datagen
-#' @concept preprocessing dimension_reduction
+#' @concept preprocessing
+#' @concept dimension_reduction
 #' @export
-#' @details `step_classdist` will create a
-#'
-#' The function will create a new column for every unique value of
-#'  the `class` variable. The resulting variables will not
-#'  replace the original values and have the prefix
-#'  `classdist_`.
+#' @details `step_classdist` will create a new column for every
+#'  unique value of the `class` variable.
+#'  The resulting variables will not replace the original values
+#'  and have the prefix `classdist_`.
 #'
 #' Note that, by default, the default covariance function requires
 #'  that each class should have at least as many rows as variables
@@ -62,7 +61,6 @@
 #'
 #' tidy(rec, number = 1)
 #' tidy(rec_dists, number = 1)
-#' @importFrom stats cov
 step_classdist <- function(recipe,
                            ...,
                            class,
@@ -76,7 +74,7 @@ step_classdist <- function(recipe,
                            skip = FALSE,
                            id = rand_id("classdist")) {
   if (!is.character(class) || length(class) != 1)
-    stop("`class` should be a single character value.")
+    rlang::abort("`class` should be a single character value.")
   add_step(
     recipe,
     step_classdist_new(
@@ -122,8 +120,6 @@ get_both <- function(x, mfun = mean, cfun = cov) {
        scale = cfun(x))
 }
 
-
-#' @importFrom stats as.formula model.frame
 #' @export
 prep.step_classdist <- function(x, training, info = NULL, ...) {
   class_var <- x$class[1]
@@ -160,8 +156,6 @@ prep.step_classdist <- function(x, training, info = NULL, ...) {
   )
 }
 
-
-#' @importFrom stats mahalanobis
 mah_by_class <- function(param, x)
   mahalanobis(x, param$center, param$scale)
 
@@ -169,7 +163,6 @@ mah_pooled <- function(means, x, cov_mat)
   mahalanobis(x, means, cov_mat)
 
 
-#' @importFrom tibble as_tibble
 #' @export
 bake.step_classdist <- function(object, new_data, ...) {
   if (object$pool) {
@@ -218,7 +211,6 @@ get_centroid <- function(x) {
 
 #' @rdname step_classdist
 #' @param x A `step_classdist` object.
-#' @importFrom dplyr bind_rows
 #' @export
 tidy.step_classdist <- function(x, ...) {
   if (is_trained(x)) {

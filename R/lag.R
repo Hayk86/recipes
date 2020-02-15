@@ -108,16 +108,14 @@ prep.step_lag <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom dplyr select arrange mutate desc
 #' @export
 bake.step_lag <- function(object, new_data, ...) {
 
   if (!all(object$lag == as.integer(object$lag)))
-    stop("step_lag requires 'lag' argument to be integer valued.",
-         call. = FALSE)
+    rlang::abort("step_lag requires 'lag' argument to be integer valued.")
 
   make_call <- function(col, lag_val) {
-    lang(
+    call2(
       "lag",
       x = sym(col),
       n = lag_val,

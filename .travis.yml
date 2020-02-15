@@ -2,7 +2,8 @@
 
 language: R
 sudo: false
-# cache: packages
+cache: packages
+warnings_are_errors: false
 
 env:
   global:
@@ -10,29 +11,42 @@ env:
 
 bioc_packages: Biobase
 
-r_packages: 
-  - NMF
+r_packages:
   - RANN
   - fastICA
   - RcppRoll
   - Matrix
   - ipred
   - RSpectra
-
-
-r:
-- 3.1
-- 3.2
-- oldrel
-- release
-- devel
+  # For Articles
+  - caret
+  - yardstick
 
 matrix:
+  fast_finish: true
+  include:
+  - r: devel
+    after_success:
+      - find . -name testthat.Rout | xargs cat        
+    after_failure:
+      - find . -name testthat.Rout | xargs cat
+  - r: release
+    after_success:
+    - Rscript -e 'covr::codecov()'
+    - find . -name testthat.Rout | xargs cat
+    before_cache:
+    - Rscript -e 'remotes::install_cran("pkgdown")'
+    - Rscript -e 'remotes::install_github("tidyverse/tidytemplate")'
+    after_failure:
+      - find . -name testthat.Rout | xargs cat
+    deploy:
+      provider: script
+      script: Rscript -e 'pkgdown::deploy_site_github(verbose = TRUE)'
+      skip_cleanup: true
+  - r: 3.5
+  - r: 3.4
+  - r: 3.3
+  - r: 3.2
+
   allow_failures:
-    - r: 3.1
-    - r: 3.2
-
-warnings_are_errors: false
-
-after_success:
-  - Rscript -e 'covr::codecov()'
+  - r: 3.2

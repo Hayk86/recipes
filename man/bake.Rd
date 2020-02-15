@@ -7,8 +7,7 @@
 \usage{
 bake(object, ...)
 
-\method{bake}{recipe}(object, new_data = NULL, ...,
-  composition = "tibble")
+\method{bake}{recipe}(object, new_data = NULL, ..., composition = "tibble")
 }
 \arguments{
 \item{object}{A trained object such as a \code{\link[=recipe]{recipe()}} with at least
@@ -57,5 +56,6 @@ of the steps applied.
 \author{
 Max Kuhn
 }
-\concept{preprocessing model_specification}
+\concept{model_specification}
+\concept{preprocessing}
 \keyword{datagen}

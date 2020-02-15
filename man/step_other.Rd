@@ -5,9 +5,17 @@
 \alias{tidy.step_other}
 \title{Collapse Some Categorical Levels}
 \usage{
-step_other(recipe, ..., role = NA, trained = FALSE, threshold = 0.05,
-  other = "other", objects = NULL, skip = FALSE,
-  id = rand_id("other"))
+step_other(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  threshold = 0.05,
+  other = "other",
+  objects = NULL,
+  skip = FALSE,
+  id = rand_id("other")
+)
 
 \method{tidy}{step_other}(x, ...)
 }
@@ -26,9 +34,11 @@ created.}
 \item{trained}{A logical to indicate if the quantities for
 preprocessing have been estimated.}
 
-\item{threshold}{A single numeric value between 0 (inclusive)
-and 1 for pooling. Factor levels whose rate of occurrence in
-the training set are below \code{threshold} will be "othered".}
+\item{threshold}{A numeric value between 0 and 1 or an integer greater or
+equal to one.  If it's less than one then factor levels whose rate of
+occurrence in the training set are below \code{threshold} will be "othered". If
+it's greater or equal to one then it's treated as a frequency and factor
+levels that occur less then \code{threshold} times will be "othered".}
 
 \item{other}{A single character value for the "other" category.}
 
@@ -60,9 +70,10 @@ step that will potentially pool infrequently occurring values
 into an "other" category.
 }
 \details{
-The overall proportion of the categories are computed. The "other"
-category is used in place of any categorical levels whose individual
-proportion in the training set is less than \code{threshold}.
+The overall proportion (or total counts) of the categories are
+computed. The "other" category is used in place of any categorical levels
+whose individual proportion (or frequency) in the training set is less than
+\code{threshold}.
 
 If no pooling is done the data are unmodified (although character data may
 be changed to factors based on the value of \code{strings_as_factors} in
@@ -76,10 +87,14 @@ If the retained categories include the value of \code{other}, an error is
 thrown. If \code{other} is in the list of discarded levels, no error
 occurs.
 
+If no pooling is done, novel factor levels are converted to missing. If
+pooling is needed, they will be placed into the other category.
+
 When data to be processed contains novel levels (i.e., not
 contained in the training set), the other category is assigned.
 }
 \examples{
+library(modeldata)
 data(okc)
 
 set.seed(19)
@@ -104,11 +119,24 @@ tidy(rec, number = 1)
 tahiti <- okc[1,]
 tahiti$location <- "a magical place"
 bake(rec, tahiti)
+
+# threshold as a frequency
+rec <- recipe(~ diet + location, data = okc_tr)
+
+rec <- rec \%>\%
+  step_other(diet, location, threshold = 2000, other = "other values")
+rec <- prep(rec, training = okc_tr)
+
+tidy(rec, number = 1)
+# compare it to
+# okc_tr \%>\% count(diet, sort = TRUE) \%>\% top_n(4)
+# okc_tr \%>\% count(location, sort = TRUE) \%>\% top_n(3)
 }
 \seealso{
 \code{\link[=step_factor2string]{step_factor2string()}}, \code{\link[=step_string2factor]{step_string2factor()}},
 \code{\link[=dummy_names]{dummy_names()}}, \code{\link[=step_regex]{step_regex()}}, \code{\link[=step_count]{step_count()}},
 \code{\link[=step_ordinalscore]{step_ordinalscore()}}, \code{\link[=step_unorder]{step_unorder()}}, \code{\link[=step_novel]{step_novel()}}
 }
-\concept{preprocessing factors}
+\concept{factors}
+\concept{preprocessing}
 \keyword{datagen}

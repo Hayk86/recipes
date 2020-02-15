@@ -47,6 +47,7 @@
 #' residuals only if they are within a certain margin of the decision boundary.
 #'
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -76,14 +77,24 @@ step_relu <-
            columns = NULL,
            skip = FALSE,
            id = rand_id("relu")) {
-    if (!is.numeric(shift))
-      stop("Shift argument must be a numeric value.", call. = FALSE)
-    if (!is.logical(reverse))
-      stop("Reverse argument must be a logical value.", call. = FALSE)
-    if (!is.logical(smooth))
-      stop("Smooth argument must be logical value.", call. = FALSE)
-    if (reverse & prefix == "right_relu_")
+    if (!is_tune(shift) & !is_varying(shift)) {
+      if (!is.numeric(shift)) {
+        rlang::abort("Shift argument must be a numeric value.")
+      }
+    }
+    if (!is_tune(reverse) & !is_varying(reverse)) {
+      if (!is.logical(reverse)) {
+        rlang::abort("Reverse argument must be a logical value.")
+      }
+    }
+    if (!is_tune(smooth) & !is_varying(smooth)) {
+      if (!is.logical(smooth)) {
+        rlang::abort("Smooth argument must be logical value.")
+      }
+    }
+    if (reverse & prefix == "right_relu_") {
       prefix <- "left_relu_"
+    }
     add_step(
       recipe,
       step_relu_new(
@@ -137,12 +148,10 @@ prep.step_relu <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom dplyr select_vars tbl_vars
-#' @importFrom rlang lang sym
 #' @export
 bake.step_relu <- function(object, new_data, ...) {
   make_relu_call <- function(col) {
-    lang("relu", sym(col), object$shift, object$reverse, object$smooth)
+    call2("relu", sym(col), object$shift, object$reverse, object$smooth)
   }
   exprs <- purrr::map(object$columns, make_relu_call)
   newname <- paste0(object$prefix, object$columns)
@@ -154,7 +163,7 @@ bake.step_relu <- function(object, new_data, ...) {
 print.step_relu <-
   function(x, width = max(20, options()$width - 30), ...) {
     cat("Adding relu transform for ", sep = "")
-    cat(format_selectors(x$terms, wdth = width))
+    cat(format_selectors(x$terms, width = width))
     if (x$trained)
       cat(" [trained]\n")
     else
@@ -165,7 +174,7 @@ print.step_relu <-
 
 relu <- function(x, shift = 0, reverse = FALSE, smooth = FALSE) {
   if (!is.numeric(x))
-    stop("step_relu can only be applied to numeric data.", call. = FALSE)
+    rlang::abort("step_relu can only be applied to numeric data.")
 
   if (reverse) {
     shifted <- shift - x

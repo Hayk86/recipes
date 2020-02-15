@@ -31,6 +31,7 @@
 #'  columns does contain `NA` values. If the check passes, nothing is changed
 #'  to the data.
 #' @examples
+#' library(modeldata)
 #' data(credit_data)
 #' is.na(credit_data) %>% colSums()
 #'
@@ -111,8 +112,8 @@ bake.check_missing <- function(object, new_data, ...) {
   if (any(nr_na > 0)) {
     with_na     <- names(nr_na[nr_na > 0])
     with_na_str <- paste(paste0("`", with_na, "`"), collapse = ", ")
-    stop("The following columns contain missing values: ",
-         with_na_str, ".", call. = FALSE)
+    rlang::abort(paste0("The following columns contain missing values: ",
+                        with_na_str, "."))
   }
   new_data
 }

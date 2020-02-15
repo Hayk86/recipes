@@ -22,7 +22,8 @@
 #'  columns that will be affected) and `value` (the factor
 #'  levels that is used for the new value)
 #' @keywords datagen
-#' @concept preprocessing factors
+#' @concept preprocessing
+#' @concept factors
 #' @export
 #' @details The selected variables are adjusted to have a new
 #'  level (given by `new_level`) that is placed in the last
@@ -42,6 +43,7 @@
 #'  [dummy_names()], [step_regex()], [step_count()],
 #'  [step_ordinalscore()], [step_unorder()], [step_other()]
 #' @examples
+#' library(modeldata)
 #' data(okc)
 #'
 #' okc_tr <- okc[1:30000,]
@@ -107,23 +109,20 @@ get_existing_values <- function(x) {
       attr(out, "is_ordered") <- is.ordered(x)
     }
     else
-      stop("Data should be either character or factor", call. = FALSE)
+      rlang::abort("Data should be either character or factor")
   }
   out
 }
 
-#' @importFrom purrr map_lgl
-#' @importFrom dplyr filter
 #' @export
 prep.step_novel <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
   col_check <- dplyr::filter(info, variable %in% col_names)
   if (any(col_check$type != "nominal"))
-    stop(
-      "Columns must be character or factor: ",
-      paste0(col_check$variable[col_check$type != "nominal"],
-             collapse = ", "),
-      call. = FALSE
+    rlang::abort(
+      paste0("Columns must be character or factor: ",
+             paste0(col_check$variable[col_check$type != "nominal"],
+                    collapse = ", "))
     )
 
   # Get existing levels and their factor type (i.e. ordered)
@@ -132,10 +131,11 @@ prep.step_novel <- function(x, training, info = NULL, ...) {
   level_check <-
     map_lgl(objects, function(x, y) y %in% x, y = x$new_level)
   if (any(level_check))
-    stop(
-      "Columns already contain the new level: ",
-      paste0(names(level_check)[level_check], collapse = ", "),
-      call. = FALSE
+    rlang::abort(
+      paste0(
+        "Columns already contain the new level: ",
+        paste0(names(level_check)[level_check], collapse = ", ")
+      )
     )
 
   step_novel_new(
@@ -149,7 +149,6 @@ prep.step_novel <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom tibble as_tibble is_tibble
 #' @export
 bake.step_novel <- function(object, new_data, ...) {
   for (i in names(object$objects)) {
@@ -180,7 +179,6 @@ print.step_novel <-
 
 #' @rdname step_novel
 #' @param x A `step_novel` object.
-#' @importFrom purrr map
 #' @export
 tidy.step_novel <- function(x, ...) {
   if (is_trained(x)) {
@@ -195,5 +193,3 @@ tidy.step_novel <- function(x, ...) {
   res
 }
 
-#' @importFrom utils globalVariables
-utils::globalVariables("variable")

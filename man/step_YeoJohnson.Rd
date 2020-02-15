@@ -5,9 +5,18 @@
 \alias{tidy.step_YeoJohnson}
 \title{Yeo-Johnson Transformation}
 \usage{
-step_YeoJohnson(recipe, ..., role = NA, trained = FALSE,
-  lambdas = NULL, limits = c(-5, 5), num_unique = 5, na_rm = TRUE,
-  skip = FALSE, id = rand_id("YeoJohnson"))
+step_YeoJohnson(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  lambdas = NULL,
+  limits = c(-5, 5),
+  num_unique = 5,
+  na_rm = TRUE,
+  skip = FALSE,
+  id = rand_id("YeoJohnson")
+)
 
 \method{tidy}{step_YeoJohnson}(x, ...)
 }
@@ -81,6 +90,7 @@ closed to the bounds, or if the optimization fails, a value of
 }
 \examples{
 
+library(modeldata)
 data(biomass)
 
 biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -89,16 +99,16 @@ biomass_te <- biomass[biomass$dataset == "Testing",]
 rec <- recipe(HHV ~ carbon + hydrogen + oxygen + nitrogen + sulfur,
               data = biomass_tr)
 
-yj_trans <- step_YeoJohnson(rec,  all_numeric())
+yj_transform <- step_YeoJohnson(rec,  all_numeric())
 
-yj_estimates <- prep(yj_trans, training = biomass_tr)
+yj_estimates <- prep(yj_transform, training = biomass_tr)
 
 yj_te <- bake(yj_estimates, biomass_te)
 
 plot(density(biomass_te$sulfur), main = "before")
 plot(density(yj_te$sulfur), main = "after")
 
-tidy(yj_trans, number = 1)
+tidy(yj_transform, number = 1)
 tidy(yj_estimates, number = 1)
 }
 \references{
@@ -109,5 +119,6 @@ transformations to improve normality or symmetry. \emph{Biometrika}.
 \code{\link[=step_BoxCox]{step_BoxCox()}} \code{\link[=recipe]{recipe()}}
 \code{\link[=prep.recipe]{prep.recipe()}} \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing transformation_methods}
+\concept{preprocessing}
+\concept{transformation_methods}
 \keyword{datagen}

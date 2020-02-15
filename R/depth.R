@@ -36,7 +36,8 @@
 #'  `tidy` method, a tibble with columns `terms` (the
 #'  selectors or variables selected) and `class`.
 #' @keywords datagen
-#' @concept preprocessing dimension_reduction
+#' @concept preprocessing
+#' @concept dimension_reduction
 #' @export
 #' @details Data depth metrics attempt to measure how close data a
 #'  data point is to the center of its distribution. There are a
@@ -89,7 +90,7 @@ step_depth <-
            skip = FALSE,
            id = rand_id("depth")) {
     if (!is.character(class) || length(class) != 1)
-      stop("`class` should be a single character value.")
+      rlang::abort("`class` should be a single character value.")
 
     recipes_pkg_check("ddalpha")
 
@@ -125,7 +126,6 @@ step_depth_new <-
     )
   }
 
-#' @importFrom stats as.formula model.frame
 #' @export
 prep.step_depth <- function(x, training, info = NULL, ...) {
   class_var <- x$class[1]
@@ -148,7 +148,6 @@ prep.step_depth <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom rlang call2
 get_depth <- function(tr_dat, new_dat, metric, opts) {
   if (!is.matrix(new_dat))
     new_dat <- as.matrix(new_dat)
@@ -158,9 +157,6 @@ get_depth <- function(tr_dat, new_dat, metric, opts) {
   eval(dd_call)
 }
 
-
-
-#' @importFrom tibble as_tibble
 #' @export
 bake.step_depth <- function(object, new_data, ...) {
   x_names <- colnames(object$data[[1]])

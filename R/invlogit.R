@@ -18,12 +18,14 @@
 #'  `tidy` method, a tibble with columns `terms` which
 #'  is the columns that will be affected.
 #' @keywords datagen
-#' @concept preprocessing transformation_methods
+#' @concept preprocessing
+#' @concept transformation_methods
 #' @export
 #' @details The inverse logit transformation takes values on the
 #'  real line and translates them to be between zero and one using
 #'  the function `f(x) = 1/(1+exp(-x))`.
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -88,8 +90,6 @@ prep.step_invlogit <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom tibble as_tibble
-#' @importFrom stats binomial
 #' @export
 bake.step_invlogit <- function(object, new_data, ...) {
   for (i in seq_along(object$columns))

@@ -37,7 +37,8 @@
 #'  selectors or variables selected) and `statistic` (the
 #'  summary function name), and `size`.
 #' @keywords datagen
-#' @concept preprocessing moving_windows
+#' @concept preprocessing
+#' @concept moving_windows
 #' @export
 #' @details The calculations use a somewhat atypical method for
 #'  handling the beginning and end parts of the rolling statistics.
@@ -113,28 +114,42 @@ step_window <-
            names = NULL,
            skip = FALSE,
            id = rand_id("window")) {
-    if(!(statistic %in% roll_funs) | length(statistic) != 1)
-      stop("`statistic` should be one of: ",
-           paste0("'", roll_funs, "'", collapse = ", "),
-           call. = FALSE)
+    if (!(statistic %in% roll_funs) | length(statistic) != 1)
+      rlang::abort(
+        paste0(
+        "`statistic` should be one of: ",
+        paste0("'", roll_funs, "'", collapse = ", ")
+          )
+        )
 
     ## ensure size is odd, integer, and not too small
-    if (is.na(size) | is.null(size))
-      stop("`size` needs a value.", call. = FALSE)
+    if (!is_tune(size) & !is_varying(size)) {
+      if (is.na(size) | is.null(size)) {
+        rlang::abort("`size` needs a value.")
+      }
 
-    if (!is.integer(size)) {
-      tmp <- size
-      size <- as.integer(size)
-      if (!isTRUE(all.equal(tmp, size)))
-        warning("`size` was not an integer (", tmp, ") and was ",
-                "converted to ", size, ".", sep = "",
-                call. = FALSE)
+      if (!is.integer(size)) {
+        tmp <- size
+        size <- as.integer(size)
+        if (!isTRUE(all.equal(tmp, size)))
+          rlang::warn(
+            paste0(
+            "`size` was not an integer (",
+            tmp,
+            ") and was ",
+            "converted to ",
+            size,
+            "."
+            )
+          )
+      }
+      if (size %% 2 == 0) {
+        rlang::abort("`size` should be odd.")
+      }
+      if (size < 3) {
+        rlang::abort("`size` should be at least 3.")
+      }
     }
-    if (size %% 2 == 0)
-      stop("`size` should be odd.", call. = FALSE)
-    if (size < 3)
-      stop("`size` should be at least 3.", call. = FALSE)
-
     add_step(
       recipe,
       step_window_new(
@@ -176,13 +191,16 @@ prep.step_window <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
 
   if (any(info$type[info$variable %in% col_names] != "numeric"))
-    stop("The selected variables should be numeric")
+    rlang::abort("The selected variables should be numeric")
 
-  if(!is.null(x$names)) {
-    if(length(x$names) != length(col_names))
-      stop("There were ", length(col_names), " term(s) selected but ",
+  if (!is.null(x$names)) {
+    if (length(x$names) != length(col_names))
+      rlang::abort(
+        paste0("There were ", length(col_names), " term(s) selected but ",
            length(x$names), " values for the new features ",
-           "were passed to `names`.", call. = FALSE)
+           "were passed to `names`."
+        )
+      )
   }
 
   step_window_new(
@@ -199,21 +217,14 @@ prep.step_window <- function(x, training, info = NULL, ...) {
   )
 }
 
-# @importFrom RcppRoll roll_max roll_maxl roll_maxr
-# @importFrom RcppRoll roll_mean roll_meanl roll_meanr
-# @importFrom RcppRoll roll_median roll_medianl roll_medianr
-# @importFrom RcppRoll roll_min roll_minl roll_minr
-# @importFrom RcppRoll roll_prod roll_prodl roll_prodr
-# @importFrom RcppRoll roll_sd roll_sdl roll_sdr
-# @importFrom RcppRoll roll_sum roll_suml roll_sumr
-# @importFrom RcppRoll roll_var roll_varl roll_varr
 roller <- function(x, stat = "mean", window = 3L, na_rm = TRUE) {
+  recipes_pkg_check("RcppRoll")
 
   m <- length(x)
 
   gap <- floor(window / 2)
-  if(m - window <= 2)
-    stop("The window is too large.", call. = FALSE)
+  if (m - window <= 2)
+    rlang::abort("The window is too large.")
 
   ## stats for centered window
   opts <- list(
@@ -234,7 +245,6 @@ roller <- function(x, stat = "mean", window = 3L, na_rm = TRUE) {
   x2
 }
 
-#' @importFrom tibble as_tibble is_tibble
 #' @export
 bake.step_window <- function(object, new_data, ...) {
   for (i in seq(along = object$columns)) {
@@ -280,3 +290,20 @@ tidy.step_window <- function(x, ...) {
   out$id <- x$id
   out
 }
+
+
+#' @rdname tunable.step
+#' @export
+tunable.step_window <- function(x, ...) {
+  tibble::tibble(
+    name = c("statistic", "window"),
+    call_info = list(
+      list(pkg = "dials", fun = "summary_stat"),
+      list(pkg = "dials", fun = "window")
+    ),
+    source = "recipe",
+    component = "step_window",
+    component_id = x$id
+  )
+}
+

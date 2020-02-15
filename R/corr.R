@@ -31,13 +31,21 @@
 #'  modified by Max Kuhn. Contributions by Reynald Lescarbeau (for
 #'  original in `caret` package). Max Kuhn for the `step`
 #'  function.
-#' @concept preprocessing variable_filters
+#' @concept preprocessing
+#' @concept variable_filters
 #' @export
 #'
 #' @details This step attempts to remove variables to keep the
 #'  largest absolute correlation between the variables less than
 #'  `threshold`.
+#'
+#' When a column has a single unique value, that column will be
+#'  excluded from the correlation analysis. Also, if the data set
+#'  has sporadic missing values (and an inappropriate value of `use`
+#'  is chosen), some columns will also be excluded from the filter.
+#'
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' set.seed(3535)
@@ -112,12 +120,16 @@ prep.step_corr <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
   check_type(training[, col_names])
 
-  filter <- corr_filter(
-    x = training[, col_names],
-    cutoff = x$threshold,
-    use = x$use,
-    method = x$method
-  )
+  if (length(col_names) > 1) {
+    filter <- corr_filter(
+      x = training[, col_names],
+      cutoff = x$threshold,
+      use = x$use,
+      method = x$method
+    )
+  } else {
+    filter <- numeric(0)
+  }
 
   step_corr_new(
     terms = x$terms,
@@ -149,7 +161,7 @@ print.step_corr <-
         cat("Correlation filter removed no terms")
     } else {
       cat("Correlation filter on ", sep = "")
-      cat(format_selectors(x$terms, wdth = width))
+      cat(format_selectors(x$terms, width = width))
     }
     if (x$trained)
       cat(" [trained]\n")
@@ -159,7 +171,6 @@ print.step_corr <-
   }
 
 
-#' @importFrom stats cor
 corr_filter <-
   function(x,
            cutoff = .90,
@@ -167,8 +178,36 @@ corr_filter <-
            method = "pearson") {
     x <- cor(x, use = use, method = method)
 
-    if (any(!complete.cases(x)))
-      stop("The correlation matrix has some missing values.")
+    if (any(!complete.cases(x))) {
+      all_na <- apply(x, 2, function(x) all(is.na(x)))
+      if (sum(all_na) >= nrow(x) - 1) {
+        rlang::warn("Too many correlations are `NA`; skipping correlation filter.")
+        return(numeric(0))
+      } else {
+        na_cols <- which(all_na)
+        if (length(na_cols) >  0) {
+          x[na_cols, ] <- 0
+          x[, na_cols] <- 0
+          rlang::warn(
+            paste0(
+              "The correlation matrix has missing values. ",
+              length(na_cols),
+              " columns were excluded from the filter."
+            )
+          )
+        }
+      }
+      if (any(is.na(x))) {
+        rlang::warn(
+          paste0(
+            "The correlation matrix has sporadic missing values. ",
+            "Some columns were excluded from the filter."
+          )
+        )
+        x[is.na(x)] <- 0
+      }
+      diag(x) <- 1
+    }
     averageCorr <- colMeans(abs(x))
     averageCorr <- as.numeric(as.factor(averageCorr))
     x[lower.tri(x, diag = TRUE)] <- NA
@@ -177,15 +216,14 @@ corr_filter <-
     colsToCheck <- ceiling(combsAboveCutoff / nrow(x))
     rowsToCheck <- combsAboveCutoff %% nrow(x)
 
-    colsToDiscard <-
-      averageCorr[colsToCheck] > averageCorr[rowsToCheck]
+    colsToDiscard <- averageCorr[colsToCheck] > averageCorr[rowsToCheck]
     rowsToDiscard <- !colsToDiscard
 
-    deletecol <-
-      c(colsToCheck[colsToDiscard], rowsToCheck[rowsToDiscard])
+    deletecol <- c(colsToCheck[colsToDiscard], rowsToCheck[rowsToDiscard])
     deletecol <- unique(deletecol)
-    if (length(deletecol) > 0)
+    if (length(deletecol) > 0) {
       deletecol <- colnames(x)[deletecol]
+    }
     deletecol
   }
 
@@ -204,3 +242,21 @@ tidy_filter <- function(x, ...) {
 #' @param x A `step_corr` object.
 #' @export
 tidy.step_corr <- tidy_filter
+
+
+
+
+#' @rdname tunable.step
+#' @export
+tunable.step_corr <- function(x, ...) {
+  tibble::tibble(
+    name = "threshold",
+    call_info = list(
+      list(pkg = "dials", fun = "threshold")
+    ),
+    source = "recipe",
+    component = "step_corr",
+    component_id = x$id
+  )
+}
+

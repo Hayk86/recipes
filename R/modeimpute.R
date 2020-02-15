@@ -19,7 +19,8 @@
 #'  selectors or variables selected) and `model` (the mode
 #'  value).
 #' @keywords datagen
-#' @concept preprocessing imputation
+#' @concept preprocessing
+#' @concept imputation
 #' @export
 #' @details `step_modeimpute` estimates the variable modes
 #'  from the data used in the `training` argument of
@@ -27,6 +28,7 @@
 #'  values to new data sets using these values. If the training set
 #'  data has more than one mode, one is selected at random.
 #' @examples
+#' library(modeldata)
 #' data("credit_data")
 #'
 #' ## missing data per column
@@ -103,8 +105,10 @@ prep.step_modeimpute <- function(x, training, info = NULL, ...) {
 #' @export
 bake.step_modeimpute <- function(object, new_data, ...) {
   for (i in names(object$modes)) {
-    if (any(is.na(new_data[, i])))
-      new_data[is.na(new_data[, i]), i] <- object$modes[i]
+    if (any(is.na(new_data[, i]))) {
+      mode_val <- cast(object$modes[[i]], new_data[[i]])
+      new_data[is.na(new_data[[i]]), i] <- mode_val
+    }
   }
   as_tibble(new_data)
 }
@@ -118,8 +122,7 @@ print.step_modeimpute <-
 
 mode_est <- function(x) {
   if (!is.character(x) & !is.factor(x))
-    stop("The data should be character or factor to compute the mode.",
-         call. = FALSE)
+    rlang::abort("The data should be character or factor to compute the mode.")
   tab <- table(x)
   modes <- names(tab)[tab == max(tab)]
   sample(modes, size = 1)

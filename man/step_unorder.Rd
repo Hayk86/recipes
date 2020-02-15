@@ -5,8 +5,15 @@
 \alias{tidy.step_unorder}
 \title{Convert Ordered Factors to Unordered Factors}
 \usage{
-step_unorder(recipe, ..., role = NA, trained = FALSE, columns = NULL,
-  skip = FALSE, id = rand_id("unorder"))
+step_unorder(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  columns = NULL,
+  skip = FALSE,
+  id = rand_id("unorder")
+)
 
 \method{tidy}{step_unorder}(x, ...)
 }
@@ -76,5 +83,6 @@ tidy(factor_obj, number = 1)
 \code{\link[=step_ordinalscore]{step_ordinalscore()}} \code{\link[=recipe]{recipe()}}
 \code{\link[=prep.recipe]{prep.recipe()}} \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing ordinal_data}
+\concept{ordinal_data}
+\concept{preprocessing}
 \keyword{datagen}

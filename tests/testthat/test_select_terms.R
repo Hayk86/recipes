@@ -7,10 +7,12 @@ library(rlang)
 context("Term selection")
 
 
+library(modeldata)
 data(okc)
 rec1 <- recipe(~ ., data = okc)
 info1 <- summary(rec1)
 
+library(modeldata)
 data(biomass)
 rec2 <- recipe(biomass) %>%
   update_role(carbon, hydrogen, oxygen, nitrogen, sulfur,
@@ -113,6 +115,10 @@ test_that('namespaced selectors', {
   expect_equal(
     terms_select(info = info1, quos(dplyr::matches("e$"))),
     terms_select(info = info1, quos(matches("e$")))
+  )
+  expect_equal(
+    terms_select(info = info1, quos(recipes::all_predictors())),
+    terms_select(info = info1, quos(all_predictors()))
   )
 })
 

@@ -23,7 +23,7 @@ test_that('basic usage', {
 
   expect_equivalent(untrained, tidy(rec1, number = 1))
 
-  rec1_p <- prep(rec1, training = iris2, retain = TRUE)
+  rec1_p <- prep(rec1, training = iris2)
 
   trained <- tibble(
     terms = "Species",
@@ -46,9 +46,9 @@ test_that('basic usage', {
 
 test_that('ratio value', {
   rec2 <- rec %>%
-    step_downsample(tidyselect::matches("Species$"), ratio = 2)
+    step_downsample(tidyselect::matches("Species$"), under_ratio = 2)
 
-  rec2_p <- prep(rec2, training = iris2, retain = TRUE)
+  rec2_p <- prep(rec2, training = iris2)
 
   tr_xtab <- table(juice(rec2_p)$Species, useNA = "always")
   te_xtab <- table(bake(rec2_p, new_data = iris2)$Species, useNA = "always")
@@ -64,7 +64,7 @@ test_that('no skipping', {
   rec3 <- rec %>%
     step_downsample(tidyselect::matches("Species$"), skip = FALSE)
 
-  rec3_p <- prep(rec3, training = iris2, retain = TRUE)
+  rec3_p <- prep(rec3, training = iris2)
 
   tr_xtab <- table(juice(rec3_p)$Species, useNA = "always")
   te_xtab <- table(bake(rec3_p, new_data = iris2)$Species, useNA = "always")
@@ -85,12 +85,12 @@ test_that('bad data', {
   expect_error(
     rec %>%
       step_downsample(Species3) %>%
-      prep(strings_as_factors = FALSE, retain = TRUE)
+      prep(strings_as_factors = FALSE)
   )
   expect_error(
     rec %>%
       step_downsample(Species, Species2) %>%
-      prep(strings_as_factors = FALSE, retain = TRUE)
+      prep(strings_as_factors = FALSE)
   )
 })
 
@@ -99,7 +99,7 @@ test_that('printing', {
     step_downsample(Species)
 
   expect_output(print(rec))
-  expect_output(prep(rec4, training = iris2, retain = TRUE, verbose = TRUE))
+  expect_output(prep(rec4, training = iris2, verbose = TRUE))
 })
 
 test_that('`seed` produces identical sampling', {
@@ -107,7 +107,7 @@ test_that('`seed` produces identical sampling', {
   downsample_with_seed <- function(rec, seed = sample.int(10^5, 1)) {
     rec %>%
       step_downsample(Species, seed = seed) %>%
-      prep(training = iris2, retain = TRUE) %>%
+      prep(training = iris2) %>%
       juice() %>%
       pull(Petal.Width)
   }
@@ -119,3 +119,34 @@ test_that('`seed` produces identical sampling', {
   expect_equal(petal_width_1, petal_width_2)
   expect_false(identical(petal_width_1, petal_width_3))
 })
+
+
+test_that('ratio deprecation', {
+
+  expect_message(
+    new_rec <-
+      rec %>%
+      step_downsample(tidyselect::matches("Species$"), ratio = 2),
+    "argument is now deprecated"
+  )
+  expect_equal(new_rec$steps[[1]]$under_ratio, 2)
+})
+
+
+
+test_that('tunable', {
+  rec <-
+    recipe(~ ., data = iris) %>%
+    step_downsample(all_predictors(), under_ratio = 1)
+  rec_param <- tunable.step_downsample(rec$steps[[1]])
+  expect_equal(rec_param$name, c("under_ratio"))
+  expect_true(all(rec_param$source == "recipe"))
+  expect_true(is.list(rec_param$call_info))
+  expect_equal(nrow(rec_param), 1)
+  expect_equal(
+    names(rec_param),
+    c('name', 'call_info', 'source', 'component', 'component_id')
+  )
+})
+
+

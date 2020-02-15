@@ -1,4 +1,4 @@
-#' Centering Numeric Data
+#' Centering numeric data
 #'
 #' `step_center` creates a *specification* of a recipe
 #'  step that will normalize numeric data to have a mean of zero.
@@ -30,7 +30,8 @@
 #'  selectors or variables selected) and `value` (the means).
 #'
 #' @keywords datagen
-#' @concept preprocessing normalization_methods
+#' @concept preprocessing
+#' @concept normalization_methods
 #' @export
 #' @details Centering data means that the average of a variable is
 #'  subtracted from the data. `step_center` estimates the
@@ -39,6 +40,7 @@
 #'  the centering to new data sets using these means.
 #'
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -119,8 +121,7 @@ prep.step_center <- function(x, training, info = NULL, ...) {
 bake.step_center <- function(object, new_data, ...) {
   res <-
     sweep(as.matrix(new_data[, names(object$means)]), 2, object$means, "-")
-  if (is.matrix(res) && ncol(res) == 1)
-    res <- res[, 1]
+  res <- tibble::as_tibble(res)
   new_data[, names(object$means)] <- res
   as_tibble(new_data)
 }

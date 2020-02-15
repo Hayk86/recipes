@@ -42,7 +42,10 @@
 #'  (the selectors or variables selected), `value` (the feature
 #'  names), and `ordinal` (a logical).
 #' @keywords datagen
-#' @concept preprocessing model_specification variable_encodings dates
+#' @concept preprocessing
+#' @concept model_specification
+#' @concept variable_encodings
+#' @concept dates
 #' @export
 #' @details Unlike other steps, `step_date` does *not*
 #'  remove the original date variables. [step_rm()] can be
@@ -89,9 +92,12 @@ step_date <-
       "quarter",
       "dow",
       "month")
-  if (!all(features %in% feat))
-    stop("Possible values of `features` should include: ",
-         paste0("'", feat, "'", collapse = ", "))
+  if (!is_tune(features) & !is_varying(features)) {
+    if (!all(features %in% feat)) {
+      rlang::abort("Possible values of `features` should include: ",
+           paste0("'", feat, "'", collapse = ", "))
+    }
+  }
   add_step(
     recipe,
     step_date_new(
@@ -126,15 +132,18 @@ step_date_new <-
     )
   }
 
-#' @importFrom stats as.formula model.frame
+
 #' @export
 prep.step_date <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
 
   date_data <- info[info$variable %in% col_names, ]
   if (any(date_data$type != "date"))
-    stop("All variables for `step_date` should be either `Date` or",
-         "`POSIXct` classes.", call. = FALSE)
+    rlang::abort(
+      paste0("All variables for `step_date` should be either `Date` or",
+          "`POSIXct` classes."
+         )
+      )
 
   step_date_new(
     terms = x$terms,
@@ -157,7 +166,6 @@ ord2fac <- function(x, what) {
 }
 
 
-#' @importFrom lubridate year yday week decimal_date quarter semester wday month
 get_date_features <-
   function(dt,
            feats,
@@ -166,8 +174,8 @@ get_date_features <-
            ord = FALSE) {
     ## pre-allocate values
     res <- matrix(NA, nrow = length(dt), ncol = length(feats))
-    res <- as_tibble(res)
     colnames(res) <- feats
+    res <- as_tibble(res)
 
     if ("year" %in% feats)
       res[, grepl("year$", names(res))] <- year(dt)
@@ -198,15 +206,21 @@ get_date_features <-
     res
   }
 
-#' @importFrom tibble as_tibble is_tibble
 #' @export
 bake.step_date <- function(object, new_data, ...) {
-  new_cols <-
-    rep(length(object$features), each = length(object$columns))
-  date_values <-
-    matrix(NA, nrow = nrow(new_data), ncol = sum(new_cols))
-  colnames(date_values) <- rep("", sum(new_cols))
+  new_cols <- rep(
+    length(object$features),
+    each = length(object$columns)
+  )
+
+  date_values <- matrix(NA, nrow = nrow(new_data), ncol = sum(new_cols))
+
+  # Dummy column names to avoid tibble warning
+  colnames(date_values) <- as.character(seq_len(sum(new_cols)))
+
   date_values <- as_tibble(date_values)
+
+  new_names <- vector("character", length = ncol(date_values))
 
   strt <- 1
   for (i in seq_along(object$columns)) {
@@ -222,16 +236,23 @@ bake.step_date <- function(object, new_data, ...) {
 
     date_values[, cols] <- tmp
 
-    names(date_values)[cols] <-
-      paste(object$columns[i],
-            names(tmp),
-            sep = "_")
+    new_names[cols] <- paste(
+      object$columns[i],
+      names(tmp),
+      sep = "_"
+    )
 
     strt <- max(cols) + 1
   }
+
+  names(date_values) <- new_names
+
   new_data <- bind_cols(new_data, date_values)
-  if (!is_tibble(new_data))
+
+  if (!is_tibble(new_data)) {
     new_data <- as_tibble(new_data)
+  }
+
   new_data
 }
 

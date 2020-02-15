@@ -19,7 +19,9 @@
 #'  `tidy` method, a tibble with columns `terms` (the
 #'  columns that will be affected).
 #' @keywords datagen
-#' @concept preprocessing variable_encodings factors
+#' @concept preprocessing
+#' @concept variable_encodings
+#' @concept factors
 #' @export
 #' @details `prep` has an option `strings_as_factors` that
 #'  defaults to `TRUE`. If this step is used with the default
@@ -27,6 +29,7 @@
 #'  to factors after all of the steps have been prepped.
 #' @seealso [step_string2factor()] [step_dummy()]
 #' @examples
+#' library(modeldata)
 #' data(okc)
 #'
 #' rec <- recipe(~ diet + location, data = okc)
@@ -36,8 +39,7 @@
 #'
 #' factor_test <- rec %>%
 #'   prep(training = okc,
-#'        strings_as_factors = FALSE,
-#'        retain = TRUE) %>%
+#'        strings_as_factors = FALSE) %>%
 #'   juice
 #' # diet is a
 #' class(factor_test$diet)
@@ -47,8 +49,7 @@
 #'
 #' string_test <- rec %>%
 #'   prep(training = okc,
-#'        strings_as_factors = FALSE,
-#'        retain = TRUE) %>%
+#'        strings_as_factors = FALSE) %>%
 #'   juice
 #' # diet is a
 #' class(string_test$diet)
@@ -94,10 +95,11 @@ prep.step_factor2string <- function(x, training, info = NULL, ...) {
   fac_check <-
     vapply(training[, col_names], is.factor, logical(1))
   if (any(!fac_check))
-    stop(
+    rlang::abort(
+      paste0(
       "The following variables are not factor vectors: ",
-      paste0("`", names(fac_check)[!fac_check], "`", collapse = ", "),
-      call. = FALSE
+      paste0("`", names(fac_check)[!fac_check], "`", collapse = ", ")
+      )
     )
 
   step_factor2string_new(
@@ -110,8 +112,6 @@ prep.step_factor2string <- function(x, training, info = NULL, ...) {
   )
 }
 
-
-#' @importFrom purrr map_df
 #' @export
 bake.step_factor2string <- function(object, new_data, ...) {
   new_data[, object$columns] <-

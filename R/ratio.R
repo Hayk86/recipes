@@ -36,6 +36,7 @@
 #' @export
 #' @examples
 #' library(recipes)
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass$total <- apply(biomass[, 3:7], 1, sum)
@@ -69,8 +70,12 @@ step_ratio <-
            skip = FALSE,
            id = rand_id("ratio")) {
     if (is_empty(denom))
-      stop("Please supply at least one denominator variable specification. ",
-           "See ?selections.", call. = FALSE)
+      rlang::abort(
+        paste0(
+          "Please supply at least one denominator variable specification. ",
+          "See ?selections."
+          )
+        )
     add_step(
       recipe,
       step_ratio_new(
@@ -112,11 +117,11 @@ prep.step_ratio <- function(x, training, info = NULL, ...) {
   col_names <- col_names[!(col_names$top == col_names$bottom), ]
 
   if (nrow(col_names) == 0)
-    stop("No variables were selected for making ratios", call. = FALSE)
+    rlang::abort("No variables were selected for making ratios")
   if (any(info$type[info$variable %in% col_names$top] != "numeric"))
-    stop("The ratio variables should be numeric")
+    rlang::abort("The ratio variables should be numeric")
   if (any(info$type[info$variable %in% col_names$bottom] != "numeric"))
-    stop("The ratio variables should be numeric")
+    rlang::abort("The ratio variables should be numeric")
 
   step_ratio_new(
     terms = x$terms,
@@ -153,7 +158,7 @@ print.step_ratio <-
       vars <- c(unique(x$columns$top), unique(x$columns$bottom))
       cat(format_ch_vec(vars, width = width))
     } else
-      cat(format_selectors(c(x$terms, x$denom), wdth = width))
+      cat(format_selectors(c(x$terms, x$denom), width = width))
     if (x$trained)
       cat(" [trained]\n")
     else

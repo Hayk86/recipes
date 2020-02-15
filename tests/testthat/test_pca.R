@@ -1,5 +1,6 @@
 library(testthat)
 library(recipes)
+library(modeldata)
 data(biomass)
 
 context("PCA")
@@ -95,13 +96,6 @@ test_that('Reduced rotation size', {
   expect_equal(pca_pred, pca_pred_exp)
 })
 
-test_that('deprecated arg', {
-  expect_message(
-    rec %>%
-      step_pca(carbon, hydrogen, oxygen, nitrogen, sulfur, num = 2)
-  )
-})
-
 test_that('printing', {
   pca_extract <- rec %>%
     step_pca(carbon, hydrogen, oxygen, nitrogen, sulfur)
@@ -109,3 +103,33 @@ test_that('printing', {
   expect_output(prep(pca_extract, training = biomass_tr, verbose = TRUE))
 })
 
+
+test_that('No PCA comps', {
+  pca_extract <- rec %>%
+    step_pca(carbon, hydrogen, oxygen, nitrogen, sulfur, num_comp = 0)
+
+  pca_extract_trained <- prep(pca_extract, training = biomass_tr)
+  expect_equal(
+    names(juice(pca_extract_trained)),
+    names(biomass_tr)[-(1:2)]
+  )
+  expect_true(all(is.na(pca_extract_trained$steps[[1]]$res$rotation)))
+  expect_output(print(pca_extract_trained),
+                regexp = "No PCA components were extracted")
+  expect_true(all(is.na(tidy(pca_extract_trained, 1)$value)))
+})
+
+test_that('tunable', {
+  rec <-
+    recipe(~ ., data = iris) %>%
+    step_pca(all_predictors())
+  rec_param <- tunable.step_pca(rec$steps[[1]])
+  expect_equal(rec_param$name, c("num_comp"))
+  expect_true(all(rec_param$source == "recipe"))
+  expect_true(is.list(rec_param$call_info))
+  expect_equal(nrow(rec_param), 1)
+  expect_equal(
+    names(rec_param),
+    c('name', 'call_info', 'source', 'component', 'component_id')
+  )
+})

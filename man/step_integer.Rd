@@ -5,9 +5,17 @@
 \alias{tidy.step_integer}
 \title{Convert values to predefined integers}
 \usage{
-step_integer(recipe, ..., role = "predictor", trained = FALSE,
-  strict = FALSE, zero_based = FALSE, key = NULL, skip = FALSE,
-  id = rand_id("integer"))
+step_integer(
+  recipe,
+  ...,
+  role = "predictor",
+  trained = FALSE,
+  strict = FALSE,
+  zero_based = FALSE,
+  key = NULL,
+  skip = FALSE,
+  id = rand_id("integer")
+)
 
 \method{tidy}{step_integer}(x, ...)
 }
@@ -77,6 +85,7 @@ Despite the name, the new values are returned as numeric unless
 \code{strict = TRUE}, which will coerce the results to integers.
 }
 \examples{
+library(modeldata)
 data(okc)
 
 okc$location <- factor(okc$location)
@@ -91,7 +100,7 @@ okc_te$diet[2] <- NA
 
 rec <- recipe(Class ~ ., data = okc_tr) \%>\%
   step_integer(all_predictors()) \%>\%
-  prep(training = okc_tr, retain = TRUE)
+  prep(training = okc_tr)
 
 bake(rec, okc_te, all_predictors())
 tidy(rec, number = 1)
@@ -102,5 +111,6 @@ tidy(rec, number = 1)
 \code{\link[=step_ordinalscore]{step_ordinalscore()}}, \code{\link[=step_unorder]{step_unorder()}}, \code{\link[=step_other]{step_other()}}
 \code{\link[=step_novel]{step_novel()}}, \code{\link[=step_dummy]{step_dummy()}}
 }
-\concept{preprocessing variable_encodings}
+\concept{preprocessing}
+\concept{variable_encodings}
 \keyword{datagen}

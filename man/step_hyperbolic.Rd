@@ -5,9 +5,17 @@
 \alias{tidy.step_hyperbolic}
 \title{Hyperbolic Transformations}
 \usage{
-step_hyperbolic(recipe, ..., role = NA, trained = FALSE,
-  func = "sin", inverse = TRUE, columns = NULL, skip = FALSE,
-  id = rand_id("hyperbolic"))
+step_hyperbolic(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  func = "sin",
+  inverse = TRUE,
+  columns = NULL,
+  skip = FALSE,
+  id = rand_id("hyperbolic")
+)
 
 \method{tidy}{step_hyperbolic}(x, ...)
 }
@@ -80,5 +88,6 @@ tidy(cos_obj, number = 1)
 \code{\link[=step_log]{step_log()}}  \code{\link[=step_sqrt]{step_sqrt()}} \code{\link[=recipe]{recipe()}}
 \code{\link[=prep.recipe]{prep.recipe()}} \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing transformation_methods}
+\concept{preprocessing}
+\concept{transformation_methods}
 \keyword{datagen}

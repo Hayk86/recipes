@@ -5,8 +5,15 @@
 \alias{tidy.step_logit}
 \title{Logit Transformation}
 \usage{
-step_logit(recipe, ..., role = NA, trained = FALSE, columns = NULL,
-  skip = FALSE, id = rand_id("logit"))
+step_logit(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  columns = NULL,
+  skip = FALSE,
+  id = rand_id("logit")
+)
 
 \method{tidy}{step_logit}(x, ...)
 }
@@ -77,5 +84,6 @@ tidy(logit_obj, number = 1)
 \code{\link[=step_sqrt]{step_sqrt()}}  \code{\link[=step_hyperbolic]{step_hyperbolic()}} \code{\link[=recipe]{recipe()}}
 \code{\link[=prep.recipe]{prep.recipe()}} \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing transformation_methods}
+\concept{preprocessing}
+\concept{transformation_methods}
 \keyword{datagen}

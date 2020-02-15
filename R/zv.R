@@ -19,10 +19,12 @@
 #'  `tidy` method, a tibble with columns `terms` which
 #'  is the columns that will be removed.
 #' @keywords datagen
-#' @concept preprocessing variable_filters
+#' @concept preprocessing
+#' @concept variable_filters
 #' @export
 #'
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass$one_value <- 1
@@ -117,7 +119,7 @@ print.step_zv <-
         cat("Zero variance filter removed no terms")
     } else {
       cat("Zero variance filter on ", sep = "")
-      cat(format_selectors(x$terms, wdth = width))
+      cat(format_selectors(x$terms, width = width))
     }
     if (x$trained)
       cat(" [trained]\n")

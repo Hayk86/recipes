@@ -5,9 +5,16 @@
 \alias{tidy.step_novel}
 \title{Simple Value Assignments for Novel Factor Levels}
 \usage{
-step_novel(recipe, ..., role = NA, trained = FALSE,
-  new_level = "new", objects = NULL, skip = FALSE,
-  id = rand_id("novel"))
+step_novel(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  new_level = "new",
+  objects = NULL,
+  skip = FALSE,
+  id = rand_id("novel")
+)
 
 \method{tidy}{step_novel}(x, ...)
 }
@@ -71,6 +78,7 @@ If \code{new_level} is already in the data given to \code{prep}, an error
 is thrown.
 }
 \examples{
+library(modeldata)
 data(okc)
 
 okc_tr <- okc[1:30000,]
@@ -94,5 +102,6 @@ tidy(rec, number = 1)
 \code{\link[=dummy_names]{dummy_names()}}, \code{\link[=step_regex]{step_regex()}}, \code{\link[=step_count]{step_count()}},
 \code{\link[=step_ordinalscore]{step_ordinalscore()}}, \code{\link[=step_unorder]{step_unorder()}}, \code{\link[=step_other]{step_other()}}
 }
-\concept{preprocessing factors}
+\concept{factors}
+\concept{preprocessing}
 \keyword{datagen}

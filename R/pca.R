@@ -32,9 +32,6 @@
 #' @param res The [stats::prcomp.default()] object is
 #'  stored here once this preprocessing step has be trained by
 #'  [prep.recipe()].
-#' @param num The number of components to retain (this will be
-#'  deprecated in factor of `num_comp` in version 0.1.5). `num_comp`
-#'  will override this option.
 #' @param prefix A character string that will be the prefix to the
 #'  resulting new variables. See notes below
 #' @return An updated version of `recipe` with the new step
@@ -43,7 +40,9 @@
 #'  selectors or variables selected), `value` (the
 #'  loading), and `component`.
 #' @keywords datagen
-#' @concept preprocessing pca projection_methods
+#' @concept preprocessing
+#' @concept pca
+#' @concept projection_methods
 #' @export
 #' @details
 #' Principal component analysis (PCA) is a transformation of a
@@ -109,17 +108,16 @@ step_pca <- function(recipe,
                      threshold = NA,
                      options = list(),
                      res = NULL,
-                     num = NULL,
                      prefix = "PC",
                      skip = FALSE,
                      id = rand_id("pca")) {
-  if (!is.na(threshold) && (threshold > 1 | threshold <= 0))
-    stop("`threshold` should be on (0, 1].", call. = FALSE)
-  if (!is.null(num))
-    message("The argument `num` is deprecated in factor of `num_comp`. ",
-            "`num` will be removed in next version.", call. = FALSE)
-  if (is.null(num_comp) & !is.null(num))
-    num_comp <- num
+
+  if (!is_tune(threshold) & !is_varying(threshold)) {
+    if (!is.na(threshold) && (threshold > 1 | threshold <= 0)) {
+      rlang::abort("`threshold` should be on (0, 1].")
+    }
+  }
+
   add_step(
     recipe,
     step_pca_new(
@@ -130,7 +128,6 @@ step_pca <- function(recipe,
       threshold = threshold,
       options = options,
       res = res,
-      num = num,
       prefix = prefix,
       skip = skip,
       id = id
@@ -139,7 +136,7 @@ step_pca <- function(recipe,
 }
 
 step_pca_new <-
-  function(terms, role, trained, num_comp, threshold, options, res, num,
+  function(terms, role, trained, num_comp, threshold, options, res,
            prefix, skip, id) {
     step(
       subclass = "pca",
@@ -150,43 +147,49 @@ step_pca_new <-
       threshold = threshold,
       options = options,
       res = res,
-      num = num,
       prefix = prefix,
       skip = skip,
       id = id
     )
   }
 
-#' @importFrom stats prcomp
-#' @importFrom rlang expr
 #' @export
 prep.step_pca <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
   check_type(training[, col_names])
 
-  prc_call <-
-    expr(prcomp(
-      retx = FALSE,
-      center = FALSE,
-      scale. = FALSE,
-      tol = NULL
-    ))
-  if (length(x$options) > 0)
-    prc_call <- mod_call_args(prc_call, args = x$options)
-  prc_call$x <- expr(training[, col_names, drop = FALSE])
-  prc_obj <- eval(prc_call)
+  if (x$num_comp > 0) {
+    prc_call <-
+      expr(prcomp(
+        retx = FALSE,
+        center = FALSE,
+        scale. = FALSE,
+        tol = NULL
+      ))
+    if (length(x$options) > 0)
+      prc_call <- mod_call_args(prc_call, args = x$options)
 
-  x$num_comp <- min(x$num_comp, length(col_names))
-  if (!is.na(x$threshold)) {
-    total_var <- sum(prc_obj$sdev ^ 2)
-    num_comp <-
-      which.max(cumsum(prc_obj$sdev ^ 2 / total_var) >= x$threshold)
-    if (length(num_comp) == 0)
-      num_comp <- length(prc_obj$sdev)
-    x$num_comp <- num_comp
+    prc_call$x <- expr(training[, col_names, drop = FALSE])
+    prc_obj <- eval(prc_call)
+
+    x$num_comp <- min(x$num_comp, length(col_names))
+    if (!is.na(x$threshold)) {
+      total_var <- sum(prc_obj$sdev ^ 2)
+      num_comp <-
+        which.max(cumsum(prc_obj$sdev ^ 2 / total_var) >= x$threshold)
+      if (length(num_comp) == 0)
+        num_comp <- length(prc_obj$sdev)
+      x$num_comp <- num_comp
+    }
+    ## decide on removing prc elements that aren't used in new projections
+    ## e.g. `sdev` etc.
+
+  } else {
+    # fake a roation matrix so that the resolved names can be used for tidy()
+    fake_matrix <- matrix(NA, nrow = length(col_names))
+    rownames(fake_matrix) <- col_names
+    prc_obj <- list(rotation = fake_matrix)
   }
-  ## decide on removing prc elements that aren't used in new projections
-  ## e.g. `sdev` etc.
 
   step_pca_new(
     terms = x$terms,
@@ -196,53 +199,76 @@ prep.step_pca <- function(x, training, info = NULL, ...) {
     threshold = x$threshold,
     options = x$options,
     res = prc_obj,
-    num = x$num_comp,
     prefix = x$prefix,
     skip = x$skip,
     id = x$id
   )
 }
 
-#' @importFrom tibble as_tibble
 #' @export
 bake.step_pca <- function(object, new_data, ...) {
-  pca_vars <- rownames(object$res$rotation)
-  comps <- predict(object$res, newdata = new_data[, pca_vars])
-  comps <- comps[, 1:object$num_comp, drop = FALSE]
-  comps <- check_name(comps, new_data, object)
-  new_data <- bind_cols(new_data, as_tibble(comps))
-  new_data <-
-    new_data[, !(colnames(new_data) %in% pca_vars), drop = FALSE]
+  if (!all(is.na(object$res$rotation))) {
+    pca_vars <- rownames(object$res$rotation)
+    comps <- predict(object$res, newdata = new_data[, pca_vars])
+    comps <- comps[, 1:object$num_comp, drop = FALSE]
+    comps <- check_name(comps, new_data, object)
+    new_data <- bind_cols(new_data, as_tibble(comps))
+    new_data <-
+      new_data[, !(colnames(new_data) %in% pca_vars), drop = FALSE]
+  }
   as_tibble(new_data)
 }
 
 print.step_pca <-
   function(x, width = max(20, options()$width - 29), ...) {
-    cat("PCA extraction with ")
-    printer(rownames(x$res$rotation), x$terms, x$trained, width = width)
+    if (all(is.na(x$res$rotation))) {
+      cat("No PCA components were extracted.\n")
+    } else {
+      cat("PCA extraction with ")
+      printer(rownames(x$res$rotation), x$terms, x$trained, width = width)
+    }
+
     invisible(x)
   }
 
-#' @importFrom utils stack
 #' @rdname step_pca
 #' @param x A `step_pca` object.
 #' @export
 tidy.step_pca <- function(x, ...) {
-  if (is_trained(x)) {
-    rot <- as.data.frame(x$res$rotation)
-    vars <- rownames(rot)
-    npc <- ncol(rot)
-    res <- utils::stack(rot)
-    colnames(res) <- c("value", "component")
-    res$component <- as.character(res$component)
-    res$terms <- rep(vars, npc)
-    res <- as_tibble(res)[, c("terms", "value", "component")]
-  } else {
+  if (!is_trained(x)) {
     term_names <- sel2char(x$terms)
     res <- tibble(terms = term_names,
                   value = na_dbl,
                   component  = na_chr)
+  } else {
+    rot <- as.data.frame(x$res$rotation)
+    vars <- rownames(rot)
+    if (x$num_comp > 0) {
+      npc <- ncol(rot)
+      res <- utils::stack(rot)
+      colnames(res) <- c("value", "component")
+      res$component <- as.character(res$component)
+      res$terms <- rep(vars, npc)
+      res <- as_tibble(res)[, c("terms", "value", "component")]
+    } else {
+      res <- tibble::tibble(terms = vars, value = rlang::na_dbl,
+                            component = rlang::na_chr)
+    }
   }
   res$id <- x$id
   res
+}
+
+
+
+#' @rdname tunable.step
+#' @export
+tunable.step_pca <- function(x, ...) {
+  tibble::tibble(
+    name = "num_comp",
+    call_info = list(list(pkg = "dials", fun = "num_comp", range = c(1, 4))),
+    source = "recipe",
+    component = "step_pca",
+    component_id = x$id
+  )
 }

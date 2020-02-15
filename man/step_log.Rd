@@ -5,9 +5,18 @@
 \alias{tidy.step_log}
 \title{Logarithmic Transformation}
 \usage{
-step_log(recipe, ..., role = NA, trained = FALSE, base = exp(1),
-  offset = 0, columns = NULL, skip = FALSE, signed = FALSE,
-  id = rand_id("log"))
+step_log(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  base = exp(1),
+  offset = 0,
+  columns = NULL,
+  skip = FALSE,
+  signed = FALSE,
+  id = rand_id("log")
+)
 
 \method{tidy}{step_log}(x, ...)
 }
@@ -99,5 +108,6 @@ recipe(~ V1 + V2, data = examples2) \%>\%
 \code{\link[=recipe]{recipe()}} \code{\link[=prep.recipe]{prep.recipe()}}
 \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing transformation_methods}
+\concept{preprocessing}
+\concept{transformation_methods}
 \keyword{datagen}

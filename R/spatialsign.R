@@ -21,7 +21,8 @@
 #'  `tidy` method, a tibble with columns `terms` which
 #'  is the columns that will be affected.
 #' @keywords datagen
-#' @concept preprocessing projection_methods
+#' @concept preprocessing
+#' @concept projection_methods
 #' @export
 #' @details The spatial sign transformation projects the variables
 #'  onto a unit sphere and is related to global contrast
@@ -37,6 +38,7 @@
 #'  Chemical Information and Modeling*, 46(3), 1402-1409.
 
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -115,11 +117,13 @@ prep.step_spatialsign <- function(x, training, info = NULL, ...) {
 #' @export
 bake.step_spatialsign <- function(object, new_data, ...) {
   col_names <- object$columns
-  ss <- function(x, na_rm)
+  ss <- function(x, na_rm) {
     x / sqrt(sum(x ^ 2, na.rm = na_rm))
-  new_data[, col_names] <-
-    t(apply(as.matrix(new_data[, col_names]), 1, ss, na_rm = object$na_rm))
-  as_tibble(new_data)
+  }
+  res <- t(apply(as.matrix(new_data[, col_names]), 1, ss, na_rm = object$na_rm))
+  res <- tibble::as_tibble(res)
+  new_data[, col_names] <- res
+  tibble::as_tibble(new_data)
 }
 
 print.step_spatialsign <-

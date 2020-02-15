@@ -30,6 +30,7 @@
 #'
 #' @examples
 #'
+#' library(modeldata)
 #' data(Smithsonian)
 #'
 #' # How close are the museums to Union Station?
@@ -37,13 +38,12 @@
 #'   update_role(name, new_role = "location") %>%
 #'   step_geodist(lat = latitude, lon = longitude, log = FALSE,
 #'                ref_lat = 38.8986312, ref_lon = -77.0062457) %>%
-#'   prep(training = Smithsonian, retain = TRUE)
+#'   prep(training = Smithsonian)
 #'
 #' juice(near_station) %>%
 #'   arrange(geo_dist)
 #'
 #' tidy(near_station, number = 1)
-#' @importFrom stats cov
 step_geodist <- function(recipe,
                          lat = NULL,
                          lon = NULL,
@@ -57,13 +57,13 @@ step_geodist <- function(recipe,
                          skip = FALSE,
                          id = rand_id("geodist")) {
   if (length(ref_lon) != 1 || !is.numeric(ref_lon))
-    stop("`ref_lon` should be a single numeric value.", call. = FALSE)
+    rlang::abort("`ref_lon` should be a single numeric value.")
   if (length(ref_lat) != 1 || !is.numeric(ref_lat))
-    stop("`ref_lat` should be a single numeric value.", call. = FALSE)
+    rlang::abort("`ref_lat` should be a single numeric value.")
   if (length(log) != 1 || !is.logical(log))
-    stop("`log` should be a single logical value.", call. = FALSE)
+    rlang::abort("`log` should be a single logical value.")
   if (length(name) != 1 || !is.character(name))
-    stop("`name` should be a single character value.", call. = FALSE)
+    rlang::abort("`name` should be a single character value.")
 
   add_step(
     recipe,
@@ -102,20 +102,20 @@ step_geodist_new <-
     )
   }
 
-#' @importFrom stats as.formula model.frame
+
 #' @export
 prep.step_geodist <- function(x, training, info = NULL, ...) {
   lon_name <- terms_select(x$lon, info = info)
   if (length(lon_name) > 1)
-    stop("`lon` should resolve to a single column name.", call. = FALSE)
+    rlang::abort("`lon` should resolve to a single column name.")
   check_type(training[, lon_name])
   lat_name <- terms_select(x$lat, info = info)
   if (length(lat_name) > 1)
-    stop("`lat` should resolve to a single column name.", call. = FALSE)
+    rlang::abort("`lat` should resolve to a single column name.")
   check_type(training[, lat_name])
 
   if (any(names(training) == x$name))
-    stop("'", x$name, "' is already used in the data.", call. = FALSE)
+    rlang::abort("'", x$name, "' is already used in the data.")
 
   step_geodist_new(
     lon = x$lon,
@@ -136,7 +136,6 @@ geo_dist_calc <- function(x, a, b)
   apply(x, 1, function(x, a, b) sqrt((x[1] - a) ^ 2 + (x[2] - b) ^ 2),
         a = a, b = b)
 
-#' @importFrom tibble as_tibble
 #' @export
 bake.step_geodist <- function(object, new_data, ...) {
   dist_vals <-
@@ -161,7 +160,6 @@ print.step_geodist <-
 
 #' @rdname step_geodist
 #' @param x A `step_geodist` object.
-#' @importFrom dplyr bind_rows
 #' @export
 tidy.step_geodist <- function(x, ...) {
   if (is_trained(x)) {

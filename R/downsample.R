@@ -14,12 +14,13 @@
 #'  created.
 #' @param column A character string of the variable name that will
 #'  be populated (eventually) by the `...` selectors.
-#' @param ratio A numeric value for the ratio of the
+#' @param under_ratio A numeric value for the ratio of the
 #'  minority-to-majority frequencies. The default value (1) means
 #'  that all other levels are sampled down to have the same
 #'  frequency as the least occurring level. A value of 2 would mean
 #'  that the majority levels will have (at most) (approximately)
 #'  twice as many rows than the minority level.
+#' @param ratio Depracated argument; same as `under_ratio`
 #' @param target An integer that will be used to subsample. This
 #'  should not be set by the user and will be populated by `prep`.
 #' @param seed An integer that will be used as the seed when downsampling.
@@ -56,16 +57,18 @@
 #'  conducted outside of the training set.
 #'
 #' @keywords datagen
-#' @concept preprocessing subsampling
+#' @concept preprocessing
+#' @concept subsampling
 #' @export
 #' @examples
+#' library(modeldata)
 #' data(okc)
 #'
 #' sort(table(okc$diet, useNA = "always"))
 #'
 #' ds_rec <- recipe( ~ ., data = okc) %>%
 #'   step_downsample(diet) %>%
-#'   prep(training = okc, retain = TRUE)
+#'   prep(training = okc)
 #'
 #' table(juice(ds_rec)$diet, useNA = "always")
 #'
@@ -74,13 +77,26 @@
 #' table(baked_okc$diet, useNA = "always")
 
 step_downsample <-
-  function(recipe, ...,  ratio = 1, role = NA, trained = FALSE,
+  function(recipe, ...,  under_ratio = 1, ratio = NA, role = NA, trained = FALSE,
            column = NULL, target = NA, skip = TRUE,
            seed = sample.int(10^5, 1), id = rand_id("downsample")) {
+
+    if (!is.na(ratio) & all(under_ratio != ratio)) {
+      message(
+        paste(
+          "The `ratio` argument is now deprecated in favor of `under_ratio`.",
+          "`ratio` will be removed in a subsequent version."
+        )
+      )
+      if (!is.na(ratio)) {
+        under_ratio <- ratio
+      }
+    }
 
     add_step(recipe,
              step_downsample_new(
                terms = ellipse_check(...),
+               under_ratio = under_ratio,
                ratio = ratio,
                role = role,
                trained = trained,
@@ -93,10 +109,11 @@ step_downsample <-
   }
 
 step_downsample_new <-
-  function(terms, ratio, role, trained, column, target, skip, seed, id) {
+  function(terms, under_ratio, ratio, role, trained, column, target, skip, seed, id) {
     step(
       subclass = "downsample",
       terms = terms,
+      under_ratio = under_ratio,
       ratio = ratio,
       role = role,
       trained = trained,
@@ -114,20 +131,21 @@ step_downsample_new <-
 prep.step_downsample <- function(x, training, info = NULL, ...) {
   col_name <- terms_select(x$terms, info = info)
   if (length(col_name) != 1)
-    stop("Please select a single factor variable.", call. = FALSE)
+    rlang::abort("Please select a single factor variable.")
   if (!is.factor(training[[col_name]]))
-    stop(col_name, " should be a factor variable.", call. = FALSE)
+    rlang::abort(col_name, " should be a factor variable.")
 
   obs_freq <- table(training[[col_name]])
   minority <- min(obs_freq)
 
   step_downsample_new(
     terms = x$terms,
+    under_ratio = x$under_ratio,
     ratio = x$ratio,
     role = x$role,
     trained = TRUE,
     column = col_name,
-    target = floor(minority * x$ratio),
+    target = floor(minority * x$under_ratio),
     skip = x$skip,
     seed = x$seed,
     id = x$id
@@ -145,9 +163,6 @@ subsamp <- function(x, num) {
   out
 }
 
-#' @importFrom tibble as_tibble
-#' @importFrom purrr map_dfr
-#' @importFrom withr with_seed
 #' @export
 bake.step_downsample <- function(object, new_data, ...) {
   if (any(is.na(new_data[[object$column]])))
@@ -166,7 +181,7 @@ bake.step_downsample <- function(object, new_data, ...) {
       }
     }
   )
-  
+
   as_tibble(new_data)
 }
 
@@ -191,4 +206,21 @@ tidy.step_downsample <- function(x, ...) {
   }
   res$id <- x$id
   res
+}
+
+# ------------------------------------------------------------------------------
+
+
+#' @rdname tunable.step
+#' @export
+tunable.step_downsample <- function(x, ...) {
+  tibble::tibble(
+    name = "under_ratio",
+    call_info = list(
+      list(pkg = "dials", fun = "under_ratio")
+    ),
+    source = "recipe",
+    component = "step_downsample",
+    component_id = x$id
+  )
 }

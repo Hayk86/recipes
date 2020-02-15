@@ -5,9 +5,16 @@
 \alias{tidy.step_string2factor}
 \title{Convert Strings to Factors}
 \usage{
-step_string2factor(recipe, ..., role = NA, trained = FALSE,
-  levels = NULL, ordered = FALSE, skip = FALSE,
-  id = rand_id("string2factor"))
+step_string2factor(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  levels = NULL,
+  ordered = FALSE,
+  skip = FALSE,
+  id = rand_id("string2factor")
+)
 
 \method{tidy}{step_string2factor}(x, ...)
 }
@@ -65,6 +72,7 @@ data will be applied to \code{step_string2factor}. However, this step
 can also take existing factors (but will leave them as-is).
 }
 \examples{
+library(modeldata)
 data(okc)
 
 rec <- recipe(~ diet + location, data = okc)
@@ -73,8 +81,7 @@ make_factor <- rec \%>\%
   step_string2factor(diet)
 make_factor <- prep(make_factor,
                     training = okc,
-                    strings_as_factors = FALSE,
-                    retain = TRUE)
+                    strings_as_factors = FALSE)
 
 # note that `diet` is a factor
 juice(make_factor) \%>\% head
@@ -85,5 +92,7 @@ tidy(make_factor, number = 1)
 \code{\link[=step_factor2string]{step_factor2string()}} \code{\link[=step_dummy]{step_dummy()}} \code{\link[=step_other]{step_other()}}
 \code{\link[=step_novel]{step_novel()}}
 }
-\concept{preprocessing variable_encodings factors}
+\concept{factors}
+\concept{preprocessing}
+\concept{variable_encodings}
 \keyword{datagen}

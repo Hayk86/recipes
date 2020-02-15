@@ -5,8 +5,15 @@
 \alias{tidy.step_sqrt}
 \title{Square Root Transformation}
 \usage{
-step_sqrt(recipe, ..., role = NA, trained = FALSE, columns = NULL,
-  skip = FALSE, id = rand_id("sqrt"))
+step_sqrt(
+  recipe,
+  ...,
+  role = NA,
+  trained = FALSE,
+  columns = NULL,
+  skip = FALSE,
+  id = rand_id("sqrt")
+)
 
 \method{tidy}{step_sqrt}(x, ...)
 }
@@ -72,5 +79,6 @@ tidy(sqrt_obj, number = 1)
 \code{\link[=step_log]{step_log()}}  \code{\link[=step_hyperbolic]{step_hyperbolic()}} \code{\link[=recipe]{recipe()}}
 \code{\link[=prep.recipe]{prep.recipe()}} \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing transformation_methods}
+\concept{preprocessing}
+\concept{transformation_methods}
 \keyword{datagen}

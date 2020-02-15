@@ -20,7 +20,9 @@
 #'  `tidy` method, a tibble with columns `terms` which
 #'  is the columns that will be affected.
 #' @keywords datagen
-#' @concept preprocessing randomization permutation
+#' @concept preprocessing
+#' @concept randomization
+#' @concept permutation
 #' @export
 #' @examples
 #' integers <- data.frame(A = 1:12, B = 13:24, C = 25:36)
@@ -83,8 +85,7 @@ prep.step_shuffle <- function(x, training, info = NULL, ...) {
 #' @export
 bake.step_shuffle <- function(object, new_data, ...) {
   if (nrow(new_data) == 1) {
-    warning("`new_data` contains a single row; unable to shuffle",
-            call. = FALSE)
+    rlang::warn("`new_data` contains a single row; unable to shuffle")
     return(new_data)
   }
 

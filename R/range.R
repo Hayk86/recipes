@@ -24,12 +24,14 @@
 #'  `tidy` method, a tibble with columns `terms` (the
 #'  selectors or variables selected), `min`, and `max`.
 #' @keywords datagen
-#' @concept preprocessing normalization_methods
+#' @concept preprocessing
+#' @concept normalization_methods
 #' @export
 #' @details When a new data point is outside of the ranges seen in
 #'  the training set, the new values are truncated at `min` or
 #'  `max`.
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -91,7 +93,6 @@ step_range_new <-
     )
   }
 
-#' @importFrom stats sd
 #' @export
 prep.step_range <- function(x, training, info = NULL, ...) {
   col_names <- terms_select(x$terms, info = info)
@@ -124,8 +125,7 @@ bake.step_range <- function(object, new_data, ...) {
   tmp[tmp < object$min] <- object$min
   tmp[tmp > object$max] <- object$max
 
-  if (is.matrix(tmp) && ncol(tmp) == 1)
-    tmp <- tmp[, 1]
+  tmp <- tibble::as_tibble(tmp)
   new_data[, colnames(object$ranges)] <- tmp
   as_tibble(new_data)
 }

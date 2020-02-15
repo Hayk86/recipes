@@ -23,13 +23,14 @@
 #'  the value of the object in the expression (to be portable
 #'  between sessions). See the examples.
 #' @keywords datagen
-#' @concept preprocessing row_filters
+#' @concept preprocessing
+#' @concept row_filters
 #' @export
 #' @examples
 #' rec <- recipe( ~ ., data = iris) %>%
 #'   step_filter(Sepal.Length > 4.5, Species == "setosa")
 #'
-#' prepped <- prep(rec, training = iris %>% slice(1:75), retain = TRUE)
+#' prepped <- prep(rec, training = iris %>% slice(1:75))
 #'
 #' library(dplyr)
 #'
@@ -108,7 +109,6 @@ prep.step_filter <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom dplyr filter
 #' @export
 bake.step_filter <- function(object, new_data, ...) {
   dplyr::filter(new_data, !!!object$inputs)
@@ -126,9 +126,6 @@ print.step_filter <-
     invisible(x)
   }
 
-#' @importFrom rlang quo_get_expr quo_text
-#' @importFrom purrr map map_chr
-#' @importFrom dplyr tibble
 #' @rdname step_filter
 #' @param x A `step_filter` object
 #' @export

@@ -12,9 +12,11 @@
 #'  method, these are not currently used.
 #' @param role Not used by this step since no new variables are
 #'  created.
-#' @param threshold A single numeric value between 0 (inclusive)
-#'  and 1 for pooling. Factor levels whose rate of occurrence in
-#'  the training set are below `threshold` will be "othered".
+#' @param threshold A numeric value between 0 and 1 or an integer greater or
+#'  equal to one.  If it's less than one then factor levels whose rate of
+#'  occurrence in the training set are below `threshold` will be "othered". If
+#'  it's greater or equal to one then it's treated as a frequency and factor
+#'  levels that occur less then `threshold` times will be "othered".
 #' @param other A single character value for the "other" category.
 #' @param objects A list of objects that contain the information
 #'  to pool infrequent levels that is determined by
@@ -25,11 +27,13 @@
 #'  columns that will be affected) and `retained` (the factor
 #'  levels that were not pulled into "other")
 #' @keywords datagen
-#' @concept preprocessing factors
+#' @concept preprocessing
+#' @concept factors
 #' @export
-#' @details The overall proportion of the categories are computed. The "other"
-#'   category is used in place of any categorical levels whose individual
-#'   proportion in the training set is less than `threshold`.
+#' @details The overall proportion (or total counts) of the categories are
+#'  computed. The "other" category is used in place of any categorical levels
+#'  whose individual proportion (or frequency) in the training set is less than
+#'  `threshold`.
 #'
 #' If no pooling is done the data are unmodified (although character data may
 #'   be changed to factors based on the value of `strings_as_factors` in
@@ -43,12 +47,16 @@
 #'   thrown. If `other` is in the list of discarded levels, no error
 #'   occurs.
 #'
+#' If no pooling is done, novel factor levels are converted to missing. If
+#'  pooling is needed, they will be placed into the other category.
+#'
 #' When data to be processed contains novel levels (i.e., not
 #' contained in the training set), the other category is assigned.
 #' @seealso [step_factor2string()], [step_string2factor()],
 #'  [dummy_names()], [step_regex()], [step_count()],
 #'  [step_ordinalscore()], [step_unorder()], [step_novel()]
 #' @examples
+#' library(modeldata)
 #' data(okc)
 #'
 #' set.seed(19)
@@ -73,6 +81,19 @@
 #' tahiti <- okc[1,]
 #' tahiti$location <- "a magical place"
 #' bake(rec, tahiti)
+#'
+#' # threshold as a frequency
+#' rec <- recipe(~ diet + location, data = okc_tr)
+#'
+#' rec <- rec %>%
+#'   step_other(diet, location, threshold = 2000, other = "other values")
+#' rec <- prep(rec, training = okc_tr)
+#'
+#' tidy(rec, number = 1)
+#' # compare it to
+#' # okc_tr %>% count(diet, sort = TRUE) %>% top_n(4)
+#' # okc_tr %>% count(location, sort = TRUE) %>% top_n(3)
+
 step_other <-
   function(recipe,
            ...,
@@ -83,10 +104,14 @@ step_other <-
            objects = NULL,
            skip = FALSE,
            id = rand_id("other")) {
-    if (threshold <= 0)
-      stop("`threshold` should be greater than zero", call. = FALSE)
-    if (threshold >= 1)
-      stop("`threshold` should be less than one", call. = FALSE)
+    if (!is_tune(threshold) & !is_varying(threshold)) {
+      if (threshold <= 0) {
+        rlang::abort("`threshold` should be greater than zero")
+      }
+      if (threshold >= 1 && !is_integerish(threshold)) {
+        rlang::abort("If `threshold` is greater than one it should be an integer.")
+      }
+    }
     add_step(
       recipe,
       step_other_new(
@@ -117,14 +142,19 @@ step_other_new <-
     )
   }
 
-#' @importFrom stats sd
 #' @export
 prep.step_other <- function(x, training, info = NULL, ...) {
-  col_names <- terms_select(x$terms, info = info)
-  objects <- lapply(training[, col_names],
-                    keep_levels,
-                    prop = x$threshold,
-                    other = x$other)
+  col_names <- terms_select(x$terms, info = info, empty_fun = passover)
+
+  if (length(col_names) > 0) {
+    objects <- lapply(training[, col_names],
+                      keep_levels,
+                      threshold = x$threshold,
+                      other = x$other)
+  } else {
+    objects <- NULL
+  }
+
   step_other_new(
     terms = x$terms,
     role = x$role,
@@ -137,28 +167,29 @@ prep.step_other <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom tibble as_tibble is_tibble
 #' @export
 bake.step_other <- function(object, new_data, ...) {
-  for (i in names(object$objects)) {
-    if (object$objects[[i]]$collapse) {
-      tmp <- if (!is.character(new_data[, i]))
-        as.character(getElement(new_data, i))
-      else
-        getElement(new_data, i)
+  if (!is.null(object$objects)) {
+    for (i in names(object$objects)) {
+      if (object$objects[[i]]$collapse) {
+        tmp <- if (!is.character(new_data[, i]))
+          as.character(getElement(new_data, i))
+        else
+          getElement(new_data, i)
 
-      tmp <- ifelse(
-        !(tmp %in% object$objects[[i]]$keep) & !is.na(tmp),
-        object$objects[[i]]$other,
-        tmp
-      )
+        tmp <- ifelse(
+          !(tmp %in% object$objects[[i]]$keep) & !is.na(tmp),
+          object$objects[[i]]$other,
+          tmp
+        )
 
-      # assign other factor levels other here too.
-      tmp <- factor(tmp,
-                    levels = c(object$objects[[i]]$keep,
-                               object$objects[[i]]$other))
+        # assign other factor levels other here too.
+        tmp <- factor(tmp,
+                      levels = c(object$objects[[i]]$keep,
+                                 object$objects[[i]]$other))
 
-      new_data[, i] <- tmp
+        new_data[, i] <- tmp
+      }
     }
   }
   if (!is_tibble(new_data))
@@ -168,17 +199,34 @@ bake.step_other <- function(object, new_data, ...) {
 
 print.step_other <-
   function(x, width = max(20, options()$width - 30), ...) {
-    cat("Collapsing factor levels for ", sep = "")
-    printer(names(x$objects), x$terms, x$trained, width = width)
+
+    if (x$trained) {
+      collapsed <- map_lgl(x$objects, ~ .x$collapse)
+      collapsed <- names(collapsed)[collapsed]
+      if (length(collapsed) > 0) {
+        cat("Collapsing factor levels for ", sep = "")
+        printer(collapsed, x$terms, x$trained, width = width)
+      } else {
+        cat("No factor levels were collapsed\n")
+      }
+    } else {
+      cat("Collapsing factor levels for ", sep = "")
+      printer(names(x$objects), x$terms, x$trained, width = width)
+    }
     invisible(x)
   }
 
-keep_levels <- function(x, prop = .1, other = "other") {
+keep_levels <- function(x, threshold = .1, other = "other") {
   if (!is.factor(x))
     x <- factor(x)
-  xtab <-
-    sort(table(x, useNA = "no"), decreasing = TRUE) / sum(!is.na(x))
-  dropped <- which(xtab < prop)
+
+  xtab <- sort(table(x, useNA = "no"), decreasing = TRUE)
+
+  if (threshold < 1) {
+    xtab <- xtab / sum(!is.na(x))
+  }
+
+  dropped <- which(xtab < threshold)
   orig <- levels(x)
 
   if (length(dropped) > 0)
@@ -190,22 +238,23 @@ keep_levels <- function(x, prop = .1, other = "other") {
     keepers <- names(xtab)[which.max(xtab)]
 
   if (other %in% keepers)
-    stop(
-      "The level ",
-      other,
-      " is already a factor level that will be retained. ",
-      "Please choose a different value.", call. = FALSE
+    rlang::abort(
+        paste0(
+        "The level ",
+        other,
+        " is already a factor level that will be retained. ",
+        "Please choose a different value."
+      )
     )
 
   list(keep = orig[orig %in% keepers],
-       collapse = TRUE, # not needed but kept for old versions
+       collapse = length(dropped) > 0,
        other = other)
 }
 
 
 #' @rdname step_other
 #' @param x A `step_other` object.
-#' @importFrom purrr map
 #' @export
 tidy.step_other <- function(x, ...) {
   if (is_trained(x)) {
@@ -221,3 +270,19 @@ tidy.step_other <- function(x, ...) {
   res$id <- x$id
   res
 }
+
+
+#' @rdname tunable.step
+#' @export
+tunable.step_other <- function(x, ...) {
+  tibble::tibble(
+    name = "threshold",
+    call_info = list(
+      list(pkg = "dials", fun = "threshold", range = c(0, 0.1))
+    ),
+    source = "recipe",
+    component = "step_other",
+    component_id = x$id
+  )
+}
+

@@ -5,10 +5,19 @@
 \alias{tidy.step_date}
 \title{Date Feature Generator}
 \usage{
-step_date(recipe, ..., role = "predictor", trained = FALSE,
-  features = c("dow", "month", "year"), abbr = TRUE, label = TRUE,
-  ordinal = FALSE, columns = NULL, skip = FALSE,
-  id = rand_id("date"))
+step_date(
+  recipe,
+  ...,
+  role = "predictor",
+  trained = FALSE,
+  features = c("dow", "month", "year"),
+  abbr = TRUE,
+  label = TRUE,
+  ordinal = FALSE,
+  columns = NULL,
+  skip = FALSE,
+  id = rand_id("date")
+)
 
 \method{tidy}{step_date}(x, ...)
 }
@@ -106,5 +115,8 @@ tidy(date_rec, number = 1)
 \code{\link[=recipe]{recipe()}} \code{\link[=prep.recipe]{prep.recipe()}}
 \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing model_specification variable_encodings dates}
+\concept{dates}
+\concept{model_specification}
+\concept{preprocessing}
+\concept{variable_encodings}
 \keyword{datagen}

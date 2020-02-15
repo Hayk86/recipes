@@ -13,7 +13,7 @@
 #'  role should they be assigned?. By default, the function assumes
 #'  that the new columns created from the original variables will be
 #'  used as predictors in a model.
-#' @param deg_free The degrees of freedom. 
+#' @param deg_free The degrees of freedom.
 #' @param objects A list of [splines::ns()] objects
 #'  created once the step has been trained.
 #' @param options A list of options for [splines::ns()]
@@ -23,7 +23,8 @@
 #'  `tidy` method, a tibble with columns `terms` which is
 #'  the columns that will be affected and `holiday`.
 #' @keywords datagen
-#' @concept preprocessing basis_expansion
+#' @concept preprocessing
+#' @concept basis_expansion
 #' @export
 #' @details `step_ns` can new features from a single variable
 #'  that enable fitting routines to model this variable in a
@@ -33,6 +34,7 @@
 #'  from the data and new columns are added. The naming convention
 #'  for the new variables is `varname_ns_1` and so on.
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -90,7 +92,7 @@ step_ns_new <-
     )
   }
 
-#' @importFrom splines ns
+
 ns_wrapper <- function(x, args) {
   if (!("Boundary.knots" %in% names(args)))
     args$Boundary.knots <- range(x)
@@ -127,8 +129,6 @@ prep.step_ns <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom tibble as_tibble is_tibble
-#' @importFrom stats predict
 #' @export
 bake.step_ns <- function(object, new_data, ...) {
   ## pre-allocate a matrix for the basis functions.
@@ -166,10 +166,28 @@ print.step_ns <-
 #' @param x A `step_ns` object.
 #' @export
 tidy.step_ns <- function(x, ...) {
-  res <- simple_terms(x, ...)
-  res <- expand.grid(terms = res$terms,
-                     degree = x$degree,
-                     stringsAsFactors = FALSE)
+  if (is_trained(x)) {
+    cols <- tibble(terms = names(x$objects))
+  } else {
+    cols <- sel2char(x$terms)
+  }
+  res <- expand.grid(terms = cols, stringsAsFactors = FALSE)
   res$id <- x$id
   as_tibble(res)
+}
+
+
+
+#' @rdname tunable.step
+#' @export
+tunable.step_ns <- function(x, ...) {
+  tibble::tibble(
+    name = c("deg_free"),
+    call_info = list(
+      list(pkg = "dials", fun = "spline_degree", range = c(1L, 15L))
+    ),
+    source = "recipe",
+    component = "step_ns",
+    component_id = x$id
+  )
 }

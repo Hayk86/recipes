@@ -5,9 +5,16 @@
 \alias{tidy.step_spatialsign}
 \title{Spatial Sign Preprocessing}
 \usage{
-step_spatialsign(recipe, ..., role = "predictor", na_rm = TRUE,
-  trained = FALSE, columns = NULL, skip = FALSE,
-  id = rand_id("spatialsign"))
+step_spatialsign(
+  recipe,
+  ...,
+  role = "predictor",
+  na_rm = TRUE,
+  trained = FALSE,
+  columns = NULL,
+  skip = FALSE,
+  id = rand_id("spatialsign")
+)
 
 \method{tidy}{step_spatialsign}(x, ...)
 }
@@ -64,6 +71,7 @@ The variables should be centered and scaled prior to the
 computations.
 }
 \examples{
+library(modeldata)
 data(biomass)
 
 biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -94,5 +102,6 @@ Serneels, S., De Nolf, E., and Van Espen, P.
 moderate robustness to multivariate estimators. \emph{Journal of
 Chemical Information and Modeling}, 46(3), 1402-1409.
 }
-\concept{preprocessing projection_methods}
+\concept{preprocessing}
+\concept{projection_methods}
 \keyword{datagen}

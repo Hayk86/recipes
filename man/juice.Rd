@@ -38,6 +38,7 @@ have been applied to the data, irrespective of the value of
 the step's \code{skip} argument.
 }
 \examples{
+library(modeldata)
 data(biomass)
 
 biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -47,11 +48,10 @@ rec <- recipe(HHV ~ carbon + hydrogen + oxygen + nitrogen + sulfur,
               data = biomass_tr)
 
 sp_signed <- rec \%>\%
-  step_center(all_predictors()) \%>\%
-  step_scale(all_predictors()) \%>\%
+  step_normalize(all_predictors()) \%>\%
   step_spatialsign(all_predictors())
 
-sp_signed_trained <- prep(sp_signed, training = biomass_tr, retain = TRUE)
+sp_signed_trained <- prep(sp_signed, training = biomass_tr)
 
 tr_values <- bake(sp_signed_trained, new_data = biomass_tr, all_predictors())
 og_values <- juice(sp_signed_trained, all_predictors())

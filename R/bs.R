@@ -1,6 +1,6 @@
 #' B-Spline Basis Functions
 #'
-#' `step_ns` creates a *specification* of a recipe step
+#' `step_bs` creates a *specification* of a recipe step
 #'  that will create new columns that are basis expansions of
 #'  variables using B-splines.
 #'
@@ -15,8 +15,8 @@
 #'  used as predictors in a model.
 #' @param objects A list of [splines::bs()] objects
 #'  created once the step has been trained.
-#' @param deg_free The degrees of freedom. 
-#' @param degree The degree of the piecewise polynomial.
+#' @param deg_free The degrees of freedom.
+#' @param degree Degree of polynomial spline (integer).
 #' @param options A list of options for [splines::bs()]
 #'  which should not include `x`, `degree`, or `df`.
 #' @return An updated version of `recipe` with the new step
@@ -24,7 +24,8 @@
 #'  `tidy` method, a tibble with columns `terms` which is
 #'  the columns that will be affected and `holiday`.
 #' @keywords datagen
-#' @concept preprocessing basis_expansion
+#' @concept preprocessing
+#' @concept basis_expansion
 #' @export
 #' @details `step_bs` can new features from a single variable
 #'  that enable fitting routines to model this variable in a
@@ -34,6 +35,7 @@
 #'  from the data and new columns are added. The naming convention
 #'  for the new variables is `varname_bs_1` and so on.
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -56,18 +58,19 @@ step_bs <-
            ...,
            role = "predictor",
            trained = FALSE,
-           deg_free = NULL, 
+           deg_free = NULL,
            degree = 3,
            objects = NULL,
            options = list(),
            skip = FALSE,
            id = rand_id("bs")) {
+
     add_step(
       recipe,
       step_bs_new(
         terms = ellipse_check(...),
         trained = trained,
-        deg_free = deg_free, 
+        deg_free = deg_free,
         degree = degree,
         role = role,
         objects = objects,
@@ -94,7 +97,6 @@ step_bs_new <-
     )
   }
 
-#' @importFrom splines bs
 bs_wrapper <- function(x, args) {
   if (!("Boundary.knots" %in% names(args)))
     args$Boundary.knots <- range(x)
@@ -117,7 +119,7 @@ prep.step_bs <- function(x, training, info = NULL, ...) {
 
   opt <- x$options
   opt$df <- x$deg_free
-  opt$degree <- x$degree 
+  opt$degree <- x$degree
   obj <- lapply(training[, col_names], bs_wrapper, opt)
   for (i in seq(along = col_names))
     attr(obj[[i]], "var") <- col_names[i]
@@ -134,8 +136,6 @@ prep.step_bs <- function(x, training, info = NULL, ...) {
   )
 }
 
-#' @importFrom tibble as_tibble is_tibble
-#' @importFrom stats predict
 #' @export
 bake.step_bs <- function(object, new_data, ...) {
   ## pre-allocate a matrix for the basis functions.
@@ -173,9 +173,29 @@ print.step_bs <-
 #' @param x A `step_bs` object.
 #' @export
 tidy.step_bs <- function(x, ...) {
-  res <- simple_terms(x, ...)
-  res <- expand.grid(terms = res$terms,
-                     stringsAsFactors = FALSE)
+  if (is_trained(x)) {
+    cols <- tibble(terms = names(x$objects))
+  } else {
+    cols <- sel2char(x$terms)
+  }
+  res <- expand.grid(terms = cols, stringsAsFactors = FALSE)
   res$id <- x$id
   as_tibble(res)
+}
+
+# ------------------------------------------------------------------------------
+
+#' @rdname tunable.step
+#' @export
+tunable.step_bs <- function(x, ...) {
+  tibble::tibble(
+    name = c("deg_free", "degree"),
+    call_info = list(
+      list(pkg = "dials", fun = "spline_degree", range = c(1L, 15L)),
+      list(pkg = "dials", fun = "degree_int", range = c(1, 2))
+    ),
+    source = "recipe",
+    component = "step_bs",
+    component_id = x$id
+  )
 }

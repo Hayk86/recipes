@@ -23,7 +23,7 @@ test_that('imputation values with 7-pt median', {
   seven_pt <- recipe(~ . , data = example_data) %>%
     update_role(day, new_role = "time_index") %>%
     step_rollimpute(all_predictors(), window = 7, id = "") %>%
-    prep(training = example_data, retain = TRUE)
+    prep(training = example_data)
 
   seven_pt_exp <- example_data
   seven_pt_exp$x1[1] <- median(seven_pt_exp$x1[1:7], na.rm = TRUE)
@@ -52,7 +52,7 @@ test_that('imputation values with 3-pt mean', {
   three_pt <- recipe(~ . , data = example_data) %>%
     update_role(day, new_role = "time_index") %>%
     step_rollimpute(all_predictors(), window = 3, id = "") %>%
-    prep(training = example_data, retain = TRUE)
+    prep(training = example_data)
 
 
   three_pt_exp <- example_data
@@ -82,14 +82,14 @@ test_that('bad args', {
   expect_error(
     recipe( ~ . , data = example_data) %>%
       step_rollimpute(all_predictors(), window = 3) %>%
-      prep(training = example_data, retain = TRUE)
+      prep(training = example_data)
   )
 
   expect_error(
     recipe( ~ . , data = example_data) %>%
       update_role(day, new_role = "time_index") %>%
       step_rollimpute(all_predictors(), window = 4) %>%
-      prep(training = example_data, retain = TRUE)
+      prep(training = example_data)
   )
 
   example_data$x4 <- 1:12
@@ -97,7 +97,7 @@ test_that('bad args', {
     recipe( ~ . , data = example_data) %>%
       update_role(day, new_role = "time_index") %>%
       step_rollimpute(all_predictors(), window = 3) %>%
-      prep(training = example_data, retain = TRUE)
+      prep(training = example_data)
   )
 })
 
@@ -111,3 +111,18 @@ test_that('printing', {
   expect_output(prep(seven_pt, training = example_data, verbose = TRUE))
 })
 
+
+test_that('tunable', {
+  rec <-
+    recipe(~ ., data = iris) %>%
+    step_rollimpute(all_predictors(), outcome = "Species")
+  rec_param <- tunable.step_rollimpute(rec$steps[[1]])
+  expect_equal(rec_param$name, c("statistic", "window"))
+  expect_true(all(rec_param$source == "recipe"))
+  expect_true(is.list(rec_param$call_info))
+  expect_equal(nrow(rec_param), 2)
+  expect_equal(
+    names(rec_param),
+    c('name', 'call_info', 'source', 'component', 'component_id')
+  )
+})

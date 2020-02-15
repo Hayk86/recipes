@@ -5,9 +5,18 @@
 \alias{tidy.step_ica}
 \title{ICA Signal Extraction}
 \usage{
-step_ica(recipe, ..., role = "predictor", trained = FALSE,
-  num_comp = 5, options = list(), res = NULL, num = NULL,
-  prefix = "IC", skip = FALSE, id = rand_id("ica"))
+step_ica(
+  recipe,
+  ...,
+  role = "predictor",
+  trained = FALSE,
+  num_comp = 5,
+  options = list(),
+  res = NULL,
+  prefix = "IC",
+  skip = FALSE,
+  id = rand_id("ica")
+)
 
 \method{tidy}{step_ica}(x, ...)
 }
@@ -41,10 +50,6 @@ not be passed here.}
 \item{res}{The \code{\link[fastICA:fastICA]{fastICA::fastICA()}} object is stored
 here once this preprocessing step has be trained by
 \code{\link[=prep.recipe]{prep.recipe()}}.}
-
-\item{num}{The number of components to retain (this will be
-deprecated in factor of \code{num_comp} in version 0.1.5). \code{num_comp}
-will override this option.}
 
 \item{prefix}{A character string that will be the prefix to the
 resulting new variables. See notes below.}
@@ -135,5 +140,7 @@ Networks}, 13(4-5), 411-430.
 \code{\link[=step_isomap]{step_isomap()}} \code{\link[=recipe]{recipe()}} \code{\link[=prep.recipe]{prep.recipe()}}
 \code{\link[=bake.recipe]{bake.recipe()}}
 }
-\concept{preprocessing ica projection_methods}
+\concept{ica}
+\concept{preprocessing}
+\concept{projection_methods}
 \keyword{datagen}

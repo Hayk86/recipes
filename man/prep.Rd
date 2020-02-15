@@ -7,8 +7,15 @@
 \usage{
 prep(x, ...)
 
-\method{prep}{recipe}(x, training = NULL, fresh = FALSE,
-  verbose = FALSE, retain = TRUE, strings_as_factors = TRUE, ...)
+\method{prep}{recipe}(
+  x,
+  training = NULL,
+  fresh = FALSE,
+  verbose = FALSE,
+  retain = TRUE,
+  strings_as_factors = TRUE,
+  ...
+)
 }
 \arguments{
 \item{x}{an object}
@@ -70,5 +77,6 @@ data, the step for scaling is given the centered data.
 \author{
 Max Kuhn
 }
-\concept{preprocessing model_specification}
+\concept{model_specification}
+\concept{preprocessing}
 \keyword{datagen}

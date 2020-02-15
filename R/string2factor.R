@@ -22,7 +22,9 @@
 #'  `tidy` method, a tibble with columns `terms` (the
 #'  selectors or variables selected) and `ordered`.
 #' @keywords datagen
-#' @concept preprocessing variable_encodings factors
+#' @concept preprocessing
+#' @concept variable_encodings
+#' @concept factors
 #' @export
 #' @details If `levels` is given, `step_string2factor` will
 #'  convert all variables affected by this step to have the same
@@ -35,6 +37,7 @@
 #' @seealso [step_factor2string()] [step_dummy()] [step_other()]
 #'  [step_novel()]
 #' @examples
+#' library(modeldata)
 #' data(okc)
 #'
 #' rec <- recipe(~ diet + location, data = okc)
@@ -43,8 +46,7 @@
 #'   step_string2factor(diet)
 #' make_factor <- prep(make_factor,
 #'                     training = okc,
-#'                     strings_as_factors = FALSE,
-#'                     retain = TRUE)
+#'                     strings_as_factors = FALSE)
 #'
 #' # note that `diet` is a factor
 #' juice(make_factor) %>% head
@@ -60,10 +62,14 @@ step_string2factor <-
            ordered = FALSE,
            skip = FALSE,
            id = rand_id("string2factor")) {
-    if(!is.logical(ordered) || length(ordered) != 1)
-      stop("`ordered` should be a single logical variable")
-    if((!is.null(levels) & !is.character(levels)) | is.list(levels))
-      stop("`levels` should be NULL or a single character vector")
+    if (!is_tune(ordered) & !is_varying(ordered)) {
+      if (!is.logical(ordered) || length(ordered) != 1) {
+        rlang::abort("`ordered` should be a single logical variable")
+      }
+    }
+    if ((!is.null(levels) & !is.character(levels)) | is.list(levels)) {
+      rlang::abort("`levels` should be NULL or a single character vector")
+    }
 
     add_step(
       recipe,
@@ -106,10 +112,11 @@ prep.step_string2factor <- function(x, training, info = NULL, ...) {
       logical(1)
     )
   if (any(!str_check))
-    stop(
-      "The following variables are not character vectors: ",
-      paste0("`", names(str_check)[!str_check], "`", collapse = ", "),
-      call. = FALSE
+    rlang::abort(
+      paste0(
+        "The following variables are not character vectors: ",
+        paste0("`", names(str_check)[!str_check], "`", collapse = ", ")
+      )
     )
 
   if (is.null(x$levels)) {
@@ -137,7 +144,6 @@ make_factor <- function(x, lvl, ord) {
   factor(x, levels = lvl, ordered = ord)
 }
 
-#' @importFrom purrr map2_df map_df
 #' @export
 bake.step_string2factor <- function(object, new_data, ...) {
   col_names <- names(object$ordered)

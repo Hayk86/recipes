@@ -54,12 +54,13 @@
 #' @concept preprocessing
 #' @export
 #' @examples
+#' library(modeldata)
 #' data(okc)
 #'
 #' # Setup a grid across date but keep the other values fixed
 #' recipe(~ diet + height + date, data = okc) %>%
 #'   step_profile(-date, profile = vars(date)) %>%
-#'   prep(training = okc, retain = TRUE) %>%
+#'   prep(training = okc) %>%
 #'   juice
 #'
 #'
@@ -74,7 +75,7 @@
 #'
 #' disp_pctl <- recipe(~ disp + cyl + hp, data = mtcars) %>%
 #'   step_profile(-disp, profile = vars(disp)) %>%
-#'   prep(training = mtcars, retain = TRUE)
+#'   prep(training = mtcars)
 #'
 #' disp_grid <- recipe(~ disp + cyl + hp, data = mtcars) %>%
 #'   step_profile(
@@ -82,7 +83,7 @@
 #'     profile = vars(disp),
 #'     grid = list(pctl = FALSE, len = 100)
 #'   ) %>%
-#'   prep(training = mtcars, retain = TRUE)
+#'   prep(training = mtcars)
 #'
 #' grid_data <- juice(disp_grid)
 #' grid_data <- grid_data %>%
@@ -115,17 +116,15 @@ step_profile <- function(recipe,
                          id = rand_id("profile")) {
 
   if (pct < 0 | pct > 1)
-    stop("`pct should be on [0, 1]`", call. = FALSE)
+    rlang::abort("`pct should be on [0, 1]`")
   if (length(grid) != 2)
-    stop("`grid` should have two named elements. See ?step_profile",
-         call. = FALSE)
+    rlang::abort("`grid` should have two named elements. See ?step_profile")
   if (all(sort(names(grid)) == c("len", "ptcl")))
-    stop("`grid` should have two named elements. See ?step_profile",
-         call. = FALSE)
+    rlang::abort("`grid` should have two named elements. See ?step_profile")
   if (grid$len < 2)
-    stop("`grid$len should be at least 2.`", call. = FALSE)
+    rlang::abort("`grid$len should be at least 2.`")
   if (!is.logical(grid$pctl))
-    stop("`grid$pctl should be logical.`", call. = FALSE)
+    rlang::abort("`grid$pctl should be logical.`")
 
   add_step(recipe,
            step_profile_new(
@@ -143,7 +142,7 @@ step_profile <- function(recipe,
   )
 }
 
-step_profile_new <- 
+step_profile_new <-
   function(terms, profile, pct, index, grid, columns, role, trained, skip, id) {
     step(
       subclass = "profile",
@@ -166,12 +165,16 @@ prep.step_profile <- function(x, training, info = NULL, ...) {
   profile_name <- terms_select(x$profile, info = info)
 
   if(length(fixed_names) == 0)
-    stop("At least one variable should be fixed", call. = FALSE)
+    rlang::abort("At least one variable should be fixed")
   if(length(profile_name) != 1)
-    stop("Only one variable should be profiled", call. = FALSE)
+    rlang::abort("Only one variable should be profiled")
   if(any(profile_name == fixed_names))
-    stop("The profiled variable cannot be in the list of ",
-         "variables to be fixed.", call. = FALSE)
+    rlang::abort(
+      paste0(
+        "The profiled variable cannot be in the list of ",
+        "variables to be fixed."
+        )
+      )
   fixed_vals <- lapply(
     training[, fixed_names],
     fixed,
@@ -221,7 +224,6 @@ print.step_profile <-
 
 #' @rdname step_profile
 #' @param x A `step_profile` object.
-#' @importFrom dplyr bind_rows
 #' @export
 tidy.step_profile <- function(x, ...) {
   if (is_trained(x)) {
@@ -255,7 +257,7 @@ fixed <- function (x, pct, index, ...) UseMethod("fixed")
 #' @export
 #' @rdname fixed
 fixed.default <- function(x, pct, index, ...) {
-  stop("No method for determining a value to fix for ",
+  rlang::abort("No method for determining a value to fix for ",
        "objects of class(s) ",
        paste0("'", class(x), "'", collapse = ","),
        call. = FALSE)
@@ -277,7 +279,7 @@ fixed.character <- function(x, pct, index, ...) {
   x <- sort(unique(x))
   x[min(index, length(x))]
 }
-#' @importFrom stats median quantile
+
 #' @export
 #' @rdname fixed
 fixed.Date <- function(x, pct, index, ...) {

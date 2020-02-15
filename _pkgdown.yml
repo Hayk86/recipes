@@ -1,11 +1,14 @@
 template:
   package: tidytemplate
-  default_assets: false
-
-# https://github.com/tidyverse/tidytemplate for css
+  params:
+    part_of: <a href="https://github.com/tidymodels">tidymodels</a>
+    footer: recipes is a part of the <strong>tidymodels</strong> ecosystem, a collection of modeling packages designed with common APIs and a shared philosophy.
 
 development:
   mode: auto
+
+home:
+  strip_header: true
 
 figures:
   fig.width: 8
@@ -32,6 +35,7 @@ reference:
   - title: Step Functions - Imputation
     contents:
     - matches("impute")
+    - step_unknown
   - title: Step Functions - Individual Transformations
     contents:
     - step_BoxCox
@@ -53,7 +57,7 @@ reference:
   - title: Step Functions - Dummy Variables and Encodings
     contents:
     - step_bin2factor
-    - step_count    
+    - step_count
     - step_date
     - step_dummy
     - step_factor2string
@@ -65,6 +69,7 @@ reference:
     - step_other
     - step_regex
     - step_string2factor
+    - step_unknown
     - step_unorder
   - title: Step Functions - Interactions
     contents:
@@ -72,17 +77,20 @@ reference:
   - title: Step Functions - Normalization
     contents:
     - step_center
-    - step_range    
+    - step_normalize
+    - step_range
     - step_scale
   - title: Step Functions - Multivariate Transformations
     contents:
     - step_classdist
     - step_depth
     - step_geodist
-    - step_ica    
+    - step_ica
     - step_isomap
-    - step_kpca
-    - step_nnmf    
+    - step_kpca_poly
+    - step_kpca_rbf
+    - step_mutate_at
+    - step_nnmf
     - step_pca
     - step_pls
     - step_ratio
@@ -96,7 +104,7 @@ reference:
     - step_zv
   - title: Step Functions - Row Operations
     contents:
-    - step_arrange  
+    - step_arrange
     - step_downsample
     - step_filter
     - step_lag
@@ -110,34 +118,36 @@ reference:
     contents:
     - step_intercept
     - step_profile
+    - step_rename
+    - step_rename_at
     - step_window
   - title: Check Functions
     contents:
     - matches("^check_")
-  - title: Example Datasets
-    contents:
-    - matches("(okc)|(biomass)|(credit)|(covers)")
+
 
 navbar:
   left:
   - text: "Simple Example"
-    href: articles/Simple_Example.html   
+    href: articles/Simple_Example.html
   - text: "Articles"
     menu:
       - text: "Selecting Variables"
-        href: articles/Selecting_Variables.html 
+        href: articles/Selecting_Variables.html
       - text: "Custom Steps"
         href: articles/Custom_Steps.html
       - text: "The Order of Steps"
-        href: articles/Ordering.html  
+        href: articles/Ordering.html
       - text: "Dummy Variables and Interactions"
-        href: articles/Dummies.html        
+        href: articles/Dummies.html
+      - text: "Column Roles"
+        href: articles/Roles.html
       - text: "On Skipping Steps"
-        href: articles/Skipping.html      
+        href: articles/Skipping.html
       - text: "Subsampling for Class Imbalances"
-        href: articles/articles/Subsampling.html      
+        href: articles/articles/Subsampling.html
       - text: "Multivariate Analysis using Partial Least Squares"
-        href: articles/articles/Multivariate_PLS.html                           
+        href: articles/articles/Multivariate_PLS.html
   - text: Reference
     href: reference/index.html
   - text: News

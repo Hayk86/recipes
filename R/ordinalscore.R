@@ -21,7 +21,8 @@
 #'  `tidy` method, a tibble with columns `terms` (the
 #'  columns that will be affected).
 #' @keywords datagen
-#' @concept preprocessing ordinal_data
+#' @concept preprocessing
+#' @concept ordinal_data
 #' @export
 #' @details Dummy variables from ordered factors with `C`
 #'  levels will create polynomial basis functions with `C-1`
@@ -45,7 +46,7 @@
 #'   step_dummy(item) %>%
 #'   step_ordinalscore(fail_severity)
 #'
-#' linear_values <- prep(linear_values, training = ord_data, retain = TRUE)
+#' linear_values <- prep(linear_values, training = ord_data)
 #'
 #' juice(linear_values, everything())
 #'
@@ -60,7 +61,7 @@
 #'
 #' tidy(nonlin_scores, number = 2)
 #'
-#' nonlin_scores <- prep(nonlin_scores, training = ord_data, retain = TRUE)
+#' nonlin_scores <- prep(nonlin_scores, training = ord_data)
 #'
 #' juice(nonlin_scores, everything())
 #'
@@ -110,9 +111,12 @@ prep.step_ordinalscore <-
     ord_check <-
       vapply(training[, col_names], is.ordered, c(logic = TRUE))
     if (!all(ord_check))
-      stop("Ordinal factor variables should be selected as ",
-           "inputs into this step.",
-           call. = TRUE)
+      rlang::abort(
+        paste0(
+          "Ordinal factor variables should be selected as ",
+           "inputs into this step."
+          )
+        )
     step_ordinalscore_new(
       terms = x$terms,
       role = x$role,

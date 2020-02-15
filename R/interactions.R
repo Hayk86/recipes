@@ -25,7 +25,8 @@
 #'  `tidy` method, a tibble with columns `terms` which is
 #'  the interaction effects.
 #' @keywords datagen
-#' @concept preprocessing model_specification
+#' @concept preprocessing
+#' @concept model_specification
 #' @export
 #' @details `step_interact` can create interactions between
 #'  variables. It is primarily intended for **numeric data**;
@@ -60,6 +61,7 @@
 #'  all two-way interactions are created.
 
 #' @examples
+#' library(modeldata)
 #' data(biomass)
 #'
 #' biomass_tr <- biomass[biomass$dataset == "Training",]
@@ -154,26 +156,30 @@ prep.step_interact <- function(x, training, info = NULL, ...) {
   ## First, find the interaction terms based on the given formula
   int_terms <- get_term_names(x$terms, vnames = colnames(training))
 
-  ## Check to see if any variables are non-numeric and issue a warning
-  ## if that is the case
-  vars <-
-    unique(unlist(lapply(make_new_formula(int_terms), all.vars)))
-  var_check <- info[info$variable %in% vars, ]
-  if (any(var_check$type == "nominal"))
-    warning(
-      "Categorical variables used in `step_interact` should probably be ",
-      "avoided;  This can lead to differences in dummy variable values that ",
-      "are produced by `step_dummy`. Please convert all involved variables ",
-      "to dummy variables first.", call. = FALSE
-    )
+  if (!all(is.na(int_terms))) {
+    ## Check to see if any variables are non-numeric and issue a warning
+    ## if that is the case
+    vars <-
+      unique(unlist(lapply(make_new_formula(int_terms), all.vars)))
+    var_check <- info[info$variable %in% vars, ]
+    if (any(var_check$type == "nominal"))
+      rlang::warn(
+        paste0(
+        "Categorical variables used in `step_interact` should probably be ",
+        "avoided;  This can lead to differences in dummy variable values that ",
+        "are produced by `step_dummy`. Please convert all involved variables ",
+        "to dummy variables first."
+        )
+      )
 
-  ## For each interaction, create a new formula that has main effects
-  ## and only the interaction of choice (e.g. `a+b+c+a:b:c`)
-  int_forms <- make_new_formula(int_terms)
+    ## For each interaction, create a new formula that has main effects
+    ## and only the interaction of choice (e.g. `a+b+c+a:b:c`)
+    int_forms <- make_new_formula(int_terms)
 
-  ## Generate a standard R `terms` object from these short formulas and
-  ## save to make future interactions
-  int_terms <- make_small_terms(int_forms, training)
+    ## Generate a standard R `terms` object from these short formulas and
+    ## save to make future interactions
+    int_terms <- make_small_terms(int_forms, training)
+  }
 
   step_interact_new(
     terms = x$terms,
@@ -189,6 +195,11 @@ prep.step_interact <- function(x, training, info = NULL, ...) {
 
 #' @export
 bake.step_interact <- function(object, new_data, ...) {
+
+  # When the interaction specification failed, just move on
+  if (isTRUE(all(is.na(object$object))))
+    return(new_data)
+
   ## `na.action` cannot be passed to `model.matrix` but we
   ## can change it globally for a bit
 
@@ -236,13 +247,12 @@ make_new_formula <- function(x) {
 }
 
 
-#' @importFrom stats model.matrix
 
 ## Given a standard model formula and some data, get the
 ## term expansion (without `.`s). This returns the factor
 ## names and would not expand dummy variables.
 get_term_names <- function(form, vnames) {
-  if(!is_formula(form))
+  if (!is_formula(form))
     form <- as.formula(form)
 
   ## We are going to cheat and make a small fake data set to
@@ -251,13 +261,24 @@ get_term_names <- function(form, vnames) {
   ## pick off the interactions
   dat <- matrix(1, nrow = 5, ncol = length(vnames))
   colnames(dat) <- vnames
-  nms <- colnames(model.matrix(form, data = as.data.frame(dat)))
+  nms <- try(
+    colnames(model.matrix(form, data = as.data.frame(dat))),
+    silent = TRUE
+  )
+  if (inherits(nms, "try-error")) {
+    rlang::warn(
+      paste0(
+        "Interaction specification failed for: ",
+        deparse(form),
+        ". No interactions will be created."
+      )
+    )
+    return(rlang::na_chr)
+  }
   nms <- nms[nms != "(Intercept)"]
   nms <- grep(":", nms, value = TRUE)
   nms
 }
-
-#' @importFrom stats terms
 
 ## For a given data set and a list of formulas, generate the
 ## standard R `terms` objects
@@ -277,10 +298,16 @@ print.step_interact <-
     invisible(x)
   }
 
-int_name <- function(x)
-  get_term_names(x, all.vars(x))
+int_name <- function(x) {
+  if (inherits(x, "terms")) {
+    res <- get_term_names(x, all.vars(x))
+  } else {
+    res <- rlang::na_chr
+  }
+  res
+}
 
-#' @importFrom rlang na_dbl
+
 #' @rdname step_interact
 #' @param x A `step_interact` object
 #' @export
@@ -309,8 +336,7 @@ find_selectors <- function (f) {
   }
   else {
     # User supplied incorrect input
-    stop("Don't know how to handle type ", typeof(f),
-         call. = FALSE)
+    rlang::abort(paste0("Don't know how to handle type ", typeof(f), "."))
   }
 }
 
@@ -327,15 +353,12 @@ replace_selectors <- function(x, elem, value) {
     map_pairlist(x, replace_selectors, elem, value)
   } else {
     # User supplied incorrect input
-    stop("Don't know how to handle type ", typeof(x),
-         call. = FALSE)
+    rlang::abort(paste0("Don't know how to handle type ", typeof(x), "."))
   }
 }
 
 plus_call <- function(x, y) call("+", x, y)
 
-#' @importFrom rlang syms !!
-#' @importFrom purrr reduce
 vec_2_expr <- function(x) {
   x <- rlang::syms(x)
   res <- purrr::reduce(x, plus_call)

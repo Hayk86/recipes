@@ -21,7 +21,8 @@
 #'  selectors or variables selected) and `value` for the estimated
 #'  threshold.
 #' @keywords datagen
-#' @concept preprocessing imputation
+#' @concept preprocessing
+#' @concept imputation
 #' @export
 #' @details `step_lowerimpute` estimates the variable minimums
 #'  from the data used in the `training` argument of `prep.recipe`.
@@ -29,6 +30,7 @@
 #'  with a random uniform value between zero and the minimum.
 #' @examples
 #' library(recipes)
+#' library(modeldata)
 #' data(biomass)
 #'
 #' ## Truncate some values to emulate what a lower limit of
@@ -103,10 +105,11 @@ prep.step_lowerimpute <- function(x, training, info = NULL, ...) {
            numeric(1),
            na.rm = TRUE)
   if (any(threshold < 0))
-    stop(
-      "Some columns have negative values. Lower bound ",
-      "imputation is intended for data bounded at zero.",
-      call. = FALSE
+    rlang::abort(
+      paste0(
+        "Some columns have negative values. Lower bound ",
+        "imputation is intended for data bounded at zero."
+      )
     )
   step_lowerimpute_new(
     terms = x$terms,
@@ -150,6 +153,3 @@ tidy.step_lowerimpute <- function(x, ...) {
   res$id <- x$id
   res
 }
-
-#' @importFrom stats runif
-utils::globalVariables(c("estimate"))
